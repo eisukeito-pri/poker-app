@@ -4,6 +4,7 @@ export type DomainErrorCode =
   | "INVALID_PLAYERS" // 人数が範囲外、ID重複など
   | "NOT_PLAYING" // 対局中でない（結果入力待ちなのに操作した等）
   | "NO_MORE_HANDS" // 最終ハンドより先へは進めない
+  | "CANNOT_END_YET" // 最終ハンドでも生存者1人でもないのに結果入力へ進もうとした
   | "PLAYER_NOT_FOUND"
   | "ALREADY_ELIMINATED"
   | "NOT_ELIMINATED"
