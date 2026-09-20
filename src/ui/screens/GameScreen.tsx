@@ -86,7 +86,7 @@ export function GameScreen(): ReactNode {
       setExpandedId(null);
       if (options?.blindToast && next.state.blinds.bigBlind !== prevBigBlind) {
         notify(
-          `ブラインドが上がりました：SB ${next.state.blinds.smallBlind} / BB ${next.state.blinds.bigBlind}`,
+          `ブラインドが上がりました<br />SB ${next.state.blinds.smallBlind} / BB ${next.state.blinds.bigBlind}`,
         );
       }
     } catch (error) {
@@ -181,7 +181,7 @@ export function GameScreen(): ReactNode {
         </div>
         {state.handsUntilBlindIncrease !== null && (
           <div className="hand-counter-sub">
-            あと{state.handsUntilBlindIncrease}ハンドでブラインド上昇
+            あと{state.handsUntilBlindIncrease}ハンドでブラインド上昇<br />
             {state.nextBlinds && `（SB ${state.nextBlinds.smallBlind} / BB ${state.nextBlinds.bigBlind}）`}
           </div>
         )}
