@@ -93,7 +93,7 @@ button,
 
 .screen-header {
   display: grid;
-  grid-template-columns: 40px 1fr 40px;
+  grid-template-columns: minmax(40px, auto) 1fr minmax(40px, auto);
   align-items: center;
 }
 
@@ -466,6 +466,7 @@ button,
   color: var(--color-danger);
   font-size: 0.95rem;
   padding: 8px 4px;
+  white-space: nowrap;
 }
 
 .hand-counter {
@@ -488,6 +489,12 @@ button,
   font-size: 1.1rem;
   font-weight: 600;
   color: var(--color-accent);
+}
+
+.dealer-hint {
+  text-align: center;
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
 }
 
 .game-player-list {
@@ -527,6 +534,24 @@ button,
 .game-player-item.is-eliminated {
   background: var(--color-bg);
   color: var(--color-text-muted);
+}
+
+/* 親は一目で分かるよう、行全体の背景色を変える（バッジだけだと見落としやすいため） */
+.game-player-item.is-dealer {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--color-primary-text);
+}
+
+.game-player-item.is-dealer.is-eliminated {
+  background: var(--color-bg);
+  border-color: var(--color-border);
+  color: var(--color-text-muted);
+}
+
+.game-player-item.is-dealer .badge-sb {
+  background: var(--color-accent);
+  color: #1a1a1a;
 }
 
 .game-player-mark {
@@ -630,8 +655,26 @@ button,
   padding: 4px 0;
 }
 
+.result-entry-input-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.result-entry-sign-toggle {
+  flex-shrink: 0;
+  min-width: 40px;
+  min-height: 40px;
+  border-radius: var(--radius);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
 .result-entry-input {
-  width: 110px;
+  width: 90px;
   text-align: right;
 }
 
@@ -880,6 +923,25 @@ button,
 .seat-circle-item.is-eliminated {
   background: var(--color-bg);
   color: var(--color-text-muted);
+}
+
+/* 親は一目で分かるよう、○全体の背景色を変える（バッジだけだと見落としやすいため） */
+.seat-circle-item.is-dealer {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--color-primary-text);
+}
+
+.seat-circle-item.is-dealer.is-eliminated {
+  background: var(--color-bg);
+  border-color: var(--color-border);
+  color: var(--color-text-muted);
+}
+
+/* 親の背景色（緑）の上でも読みやすいよう、SBバッジも塗りつぶしにする */
+.seat-circle-item.is-dealer .badge-sb {
+  background: var(--color-accent);
+  color: #1a1a1a;
 }
 
 .seat-circle-name {

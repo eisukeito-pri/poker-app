@@ -100,6 +100,15 @@ export function ResultInputScreen(): ReactNode {
   const issueOf = (id: string) => sheet.issues.find((i) => i.playerId === id) ?? null;
   const playerCount = game.game.seats.length;
 
+  /** スマホの数字キーパッドには「−」キーがないことが多いので、符号だけ反転させるボタン用 */
+  function toggleSign(playerId: string) {
+    setLocalValues((v) => {
+      const raw = (v[playerId] ?? "").trim();
+      const next = raw.startsWith("-") ? raw.slice(1) : raw === "" ? "-" : `-${raw}`;
+      return { ...v, [playerId]: next };
+    });
+  }
+
   async function commitValue(playerId: string, raw: string) {
     const trimmed = raw.trim();
     const value = trimmed === "" ? null : Number(trimmed);
@@ -250,17 +259,29 @@ export function ResultInputScreen(): ReactNode {
                     {isAuto && <span className="result-entry-auto-label">自動</span>}
                   </span>
                 ) : (
-                  <input
-                    className="field-input result-entry-input"
-                    type="number"
-                    inputMode="numeric"
-                    value={localValues[entry.playerId] ?? ""}
-                    disabled={busy}
-                    onChange={(e) =>
-                      setLocalValues((v) => ({ ...v, [entry.playerId]: e.target.value }))
-                    }
-                    onBlur={(e) => commitValue(entry.playerId, e.target.value)}
-                  />
+                  <div className="result-entry-input-group">
+                    <button
+                      type="button"
+                      className="result-entry-sign-toggle"
+                      aria-label="符号を反転（プラス・マイナス）"
+                      disabled={busy}
+                      onMouseDown={(event: { preventDefault: () => void }) => event.preventDefault()}
+                      onClick={() => toggleSign(entry.playerId)}
+                    >
+                      ±
+                    </button>
+                    <input
+                      className="field-input result-entry-input"
+                      type="text"
+                      inputMode="numeric"
+                      value={localValues[entry.playerId] ?? ""}
+                      disabled={busy}
+                      onChange={(e) =>
+                        setLocalValues((v) => ({ ...v, [entry.playerId]: e.target.value }))
+                      }
+                      onBlur={(e) => commitValue(entry.playerId, e.target.value)}
+                    />
+                  </div>
                 )}
               </div>
 

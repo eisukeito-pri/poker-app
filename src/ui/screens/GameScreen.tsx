@@ -190,6 +190,7 @@ export function GameScreen(): ReactNode {
       <div className="blinds-display">
         SB {state.blinds.smallBlind} / BB {state.blinds.bigBlind}
       </div>
+      <p className="dealer-hint">親：{nameOf(state.dealerId)}さん</p>
 
       {view.game.seats.length <= CIRCLE_LAYOUT_MAX_PLAYERS ? (
         <div className="seat-circle">
@@ -206,14 +207,13 @@ export function GameScreen(): ReactNode {
                 key={player.id}
                 type="button"
                 className={`seat-circle-item${isEliminated ? " is-eliminated" : ""}${
-                  expanded ? " is-expanded" : ""
-                }`}
+                  isDealer ? " is-dealer" : ""
+                }${expanded ? " is-expanded" : ""}`}
                 style={{ left: pos.left, top: pos.top }}
                 onClick={() => setExpandedId(expanded ? null : player.id)}
                 disabled={busy}
               >
                 <span className="seat-circle-badges">
-                  {isDealer && <span className="badge badge-dealer">親</span>}
                   {isSB && <span className="badge badge-sb">SB</span>}
                   {isBB && <span className="badge badge-bb">BB</span>}
                 </span>
@@ -239,8 +239,8 @@ export function GameScreen(): ReactNode {
                 <button
                   type="button"
                   className={`game-player-item${isEliminated ? " is-eliminated" : ""}${
-                    expanded ? " is-expanded" : ""
-                  }`}
+                    isDealer ? " is-dealer" : ""
+                  }${expanded ? " is-expanded" : ""}`}
                   onClick={() => setExpandedId(expanded ? null : player.id)}
                   disabled={busy}
                 >
