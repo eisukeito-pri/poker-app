@@ -43,6 +43,15 @@ function assertNameAvailable(
   }
 }
 
+/** 同じ名前（前後の空白と英字の大小は無視）の人を探す。名前が不正なら INVALID_PLAYER_NAME */
+export function findPlayerByName(
+  players: readonly Player[],
+  rawName: string,
+): Player | undefined {
+  const name = normalizePlayerName(rawName);
+  return players.find((p) => nameKey(p.name) === nameKey(name));
+}
+
 export function registerPlayer(
   players: readonly Player[],
   input: { readonly id: PlayerId; readonly name: string; readonly now: IsoDateTime },

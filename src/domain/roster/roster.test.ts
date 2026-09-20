@@ -2,6 +2,7 @@ import { describe, expect, test } from "vitest";
 import { playerId } from "../shared/constructors";
 import { expectDomainError } from "../shared/testing";
 import {
+  findPlayerByName,
   MAX_NAME_LENGTH,
   normalizePlayerName,
   registerPlayer,
@@ -88,6 +89,19 @@ describe("renamePlayer", () => {
   test("名簿にいない人・不正な名前は拒否する", () => {
     expectDomainError(() => renamePlayer(roster("Alice"), playerId("zz"), "X"), "PLAYER_NOT_FOUND");
     expectDomainError(() => renamePlayer(roster("Alice"), playerId("p1"), " "), "INVALID_PLAYER_NAME");
+  });
+});
+
+describe("findPlayerByName", () => {
+  test("前後の空白と英字の大小を無視して、同じ名前の人を見つける", () => {
+    const players = roster("Alice", "太郎");
+    expect(findPlayerByName(players, " alice ")?.id).toBe("p1");
+    expect(findPlayerByName(players, "太郎")?.id).toBe("p2");
+    expect(findPlayerByName(players, "Bob")).toBeUndefined();
+  });
+
+  test("不正な名前は拒否する", () => {
+    expectDomainError(() => findPlayerByName(roster("Alice"), "  "), "INVALID_PLAYER_NAME");
   });
 });
 

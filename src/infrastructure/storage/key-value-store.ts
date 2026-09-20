@@ -15,6 +15,8 @@ export class MemoryKeyValueStore implements KeyValueStore {
   private readonly items = new Map<string, string>();
   /** true を返したキーへの書き込みを失敗させる（容量超過などの再現用） */
   shouldFailWrite: (key: string) => boolean = () => false;
+  /** true を返したキーの削除を失敗させる */
+  shouldFailRemove: (key: string) => boolean = () => false;
 
   getItem(key: string): string | null {
     return this.items.get(key) ?? null;
@@ -28,6 +30,9 @@ export class MemoryKeyValueStore implements KeyValueStore {
   }
 
   removeItem(key: string): void {
+    if (this.shouldFailRemove(key)) {
+      throw new Error("remove failed (simulated)");
+    }
     this.items.delete(key);
   }
 

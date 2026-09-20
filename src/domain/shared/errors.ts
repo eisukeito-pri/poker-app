@@ -19,7 +19,10 @@ export type DomainErrorCode =
   | "INVALID_BACKUP" // バックアップの形式が不正
   | "UNSUPPORTED_BACKUP_VERSION" // 新しい（未対応の）バージョンのバックアップ
   | "STORAGE_FAILED" // 保存・読み込みに失敗（容量超過など）
-  | "STORAGE_CORRUPTED"; // 保存されているデータが壊れている
+  | "STORAGE_CORRUPTED" // 保存されているデータが壊れている
+  | "GAME_IN_PROGRESS" // 進行中の対局があるため、新しい対局を始められない
+  | "NO_CURRENT_GAME" // 進行中の対局がない
+  | "RECORD_NOT_FOUND"; // 指定した記録がない
 
 export class DomainError extends Error {
   readonly code: DomainErrorCode;
