@@ -34,6 +34,7 @@ export function aggregatePendingSettlement(
     playerId: PlayerId;
     latestName: string;
     total: number;
+    bountyTotal: number;
   }
   const accumulators = new Map<string, Accumulator>();
 
@@ -49,10 +50,17 @@ export function aggregatePendingSettlement(
           playerId: result.playerId,
           latestName: snapshotNames.get(result.playerId) ?? result.playerId,
           total: result.netYen,
+          bountyTotal: 0,
         });
       } else {
         current.total += result.netYen;
       }
+    }
+    for (const bounty of record.bountyTransfers) {
+      const to = accumulators.get(bounty.to);
+      if (to) to.bountyTotal += bounty.amount;
+      const from = accumulators.get(bounty.from);
+      if (from) from.bountyTotal -= bounty.amount;
     }
   }
 
@@ -61,6 +69,7 @@ export function aggregatePendingSettlement(
       playerId: a.playerId,
       name: a.latestName,
       netYen: yen(a.total),
+      bountyNetYen: yen(a.bountyTotal),
     }))
     .sort((a, b) => b.netYen - a.netYen || a.name.localeCompare(b.name, "ja"));
 

@@ -33,6 +33,10 @@ export interface PlayerRepository {
  * settledAt が null の間は「未精算」で、精算（SettlementRecord）が作られると
  * その時刻が入る。transfers はこの対局単体で見たときの送金額の参考値であり、
  * 実際に支払う金額は未精算の対局をまとめた SettlementRecord の方で決まる。
+ *
+ * 脱落ボーナスのルールが有効だった対局では、results の netYen にすでに
+ * ボーナス分が反映済み（チップの収支＝netChips は影響を受けない）。
+ * bountyTransfers は、その内訳（誰が誰にいくら払ったか）。ルールが無効だった対局では空配列
  */
 export interface GameRecord {
   readonly gameId: GameId;
@@ -42,10 +46,12 @@ export interface GameRecord {
   readonly players: readonly GamePlayer[];
   /** 実際に打ったハンド数（生存者1人で早期終了した場合は総ハンド数より少ない） */
   readonly handsPlayed: number;
-  /** 座席順 */
+  /** 座席順。netYenは脱落ボーナスの分を含めた、この対局での最終的な収支 */
   readonly results: readonly PlayerResult[];
-  /** この対局単体だけで精算した場合の送金額（参考値） */
+  /** この対局単体だけで精算した場合の送金額（参考値。脱落ボーナスの分を含む） */
   readonly transfers: readonly Transfer[];
+  /** 脱落ボーナスの内訳（脱落した人 → 脱落させた人）。ルールが無効なら空配列 */
+  readonly bountyTransfers: readonly Transfer[];
   /** 未精算なら null。精算されたら、その時刻が入る */
   readonly settledAt: IsoDateTime | null;
 }
@@ -68,6 +74,8 @@ export interface PlayerYenBalance {
   /** 名前のスナップショット（精算時点） */
   readonly name: string;
   readonly netYen: Yen;
+  /** netYenのうち、脱落ボーナスのルールによる分（内訳表示用）。使った対局がなければ0 */
+  readonly bountyNetYen: Yen;
 }
 
 /**

@@ -66,6 +66,8 @@ async function setup() {
       blindIncreaseEveryHands: 5,
       blindIncreaseAmount: 0,
       yenPerChip: 0.1,
+      bountyRuleEnabled: false,
+      bountyAmountYen: 100,
     });
     await gameUseCases.advanceHand();
     const view = await gameUseCases.endPlay(); // 結果入力待ちに
@@ -246,6 +248,8 @@ describe("getPendingSettlement / settleUp", () => {
       blindIncreaseEveryHands: 5,
       blindIncreaseAmount: 0,
       yenPerChip: 0.1,
+      bountyRuleEnabled: false,
+      bountyAmountYen: 100,
     });
     await gameUseCases.advanceHand();
     await gameUseCases.endPlay();

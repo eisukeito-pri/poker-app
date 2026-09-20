@@ -24,7 +24,9 @@ export type DomainErrorCode =
   | "NO_CURRENT_GAME" // 進行中の対局がない
   | "RECORD_NOT_FOUND" // 指定した記録がない
   | "NO_PENDING_SETTLEMENT" // 未精算の対局が1件もない
-  | "SETTLEMENT_NOT_FOUND"; // 指定した精算記録がない
+  | "SETTLEMENT_NOT_FOUND" // 指定した精算記録がない
+  | "BOUNTY_RECIPIENT_REQUIRED" // 脱落ボーナスのルールが有効なのに、脱落させた人が指定されていない
+  | "INVALID_BOUNTY_RECIPIENT"; // 脱落させた人の指定が不正（自分自身、脱落済み、参加者以外など）
 
 export class DomainError extends Error {
   readonly code: DomainErrorCode;

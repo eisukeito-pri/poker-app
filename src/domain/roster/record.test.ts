@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { chips, exchangeRateFromYen, gameId, playerId } from "../shared/constructors";
+import { chips, exchangeRateFromYen, gameId, playerId, yen } from "../shared/constructors";
 import { expectDomainError } from "../shared/testing";
 import { advanceHand, create, eliminate, endPlay } from "../game/game";
 import type { Game, GameSettings } from "../game/types";
@@ -16,6 +16,7 @@ const settings: GameSettings = {
   totalHands: 3,
   blindSchedule: { initialBigBlind: chips(100), increaseEveryHands: 5, increaseAmount: chips(50) },
   exchangeRate: exchangeRateFromYen(0.1),
+  bountyRule: null,
 };
 
 function newGame(): Game {
@@ -32,6 +33,20 @@ function newGame(): Game {
 
 const finishedAtFinalHand = (): Game =>
   endPlay(advanceHand(advanceHand(newGame(), LATER), LATER), LATER);
+
+const bountySettings: GameSettings = { ...settings, bountyRule: { amountYen: yen(500) } };
+
+function newGameWithBounty(): Game {
+  return create(
+    {
+      seats: ["A", "B", "C"].map((id) => ({ id: playerId(id), name: `名前${id}` })),
+      initialDealerId: playerId("A"),
+      settings: bountySettings,
+    },
+    gameId("g1"),
+    CREATED,
+  );
+}
 
 function settle(...values: number[]): Settlement {
   return calculateSettlement(
@@ -99,6 +114,43 @@ describe("createGameRecord", () => {
       "RESULT_INVALID",
     );
   });
+
+  test("脱落ボーナスのルールが有効なら、netYenと送金リストに反映される（チップの収支は変えない）", () => {
+    const game = endPlay(
+      eliminate(
+        advanceHand(advanceHand(newGameWithBounty(), LATER), LATER),
+        playerId("B"),
+        LATER,
+        playerId("A"),
+      ),
+      LATER,
+    );
+    const settlement = settle(1000, -400, -600);
+    const record = createGameRecord({ game, settlement });
+
+    expect(record.bountyTransfers).toEqual([{ from: "B", to: "A", amount: 500 }]);
+    expect(record.results.map((r) => [r.playerId, r.netChips])).toEqual(
+      settlement.results.map((r) => [r.playerId, r.netChips]),
+    );
+    expect(record.results.map((r) => r.netYen)).toEqual([600, -540, -60]);
+    expect(record.results.reduce((sum, r) => sum + r.netYen, 0)).toBe(0);
+
+    const net = new Map<string, number>([["A", 0], ["B", 0], ["C", 0]]);
+    for (const t of record.transfers) {
+      net.set(t.to, (net.get(t.to) ?? 0) + t.amount);
+      net.set(t.from, (net.get(t.from) ?? 0) - t.amount);
+    }
+    expect(net.get("A")).toBe(600);
+    expect(net.get("B")).toBe(-540);
+    expect(net.get("C")).toBe(-60);
+  });
+
+  test("脱落ボーナスのルールが無効なら、bountyTransfersは空で送金額もそのまま", () => {
+    const settlement = settle(1000, -400, -600);
+    const record = createGameRecord({ game: finishedAtFinalHand(), settlement });
+    expect(record.bountyTransfers).toEqual([]);
+    expect(record.transfers).toEqual(settlement.transfers);
+  });
 });
 
 describe("sortRecordsNewestFirst", () => {
@@ -110,6 +162,7 @@ describe("sortRecordsNewestFirst", () => {
     handsPlayed: 1,
     results: [],
     transfers: [],
+    bountyTransfers: [],
     settledAt: null,
   });
 

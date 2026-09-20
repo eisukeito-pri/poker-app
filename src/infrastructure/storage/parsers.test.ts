@@ -4,15 +4,19 @@ import {
   parseGame,
   parseGameRecord,
   parsePlayers,
+  parseSettlementRecord,
   SchemaError,
 } from "./parsers";
 import {
   edit,
+  finishedBountyGame,
   finishedGame,
   newGameFixture,
   sampleBackup,
+  sampleBountyRecord,
   samplePlayers,
   sampleRecord,
+  sampleSettlementRecord,
   viaJson,
 } from "./test-fixtures";
 
@@ -63,6 +67,45 @@ describe("parseGame", () => {
     expectSchemaError(() => parseGame(edit(newGameFixture(), (d) => { d.seats[1].id = "A"; })));
     expectSchemaError(() => parseGame(edit(newGameFixture(), (d) => { d.initialDealerId = "Z"; })));
     expectSchemaError(() => parseGame(edit(newGameFixture(), (d) => { d.seats = d.seats.slice(0, 1); })));
+    expectSchemaError(() => parseGame(edit(newGameFixture(), (d) => { d.settings.bountyRule = { amountYen: 0 }; })));
+  });
+
+  test("脱落ボーナスのルールが有効な対局は、脱落させた人を含めてそのまま読み込める", () => {
+    const bounty = finishedBountyGame();
+    expect(parseGame(viaJson(bounty))).toEqual(bounty);
+  });
+
+  test("古いデータ（bountyRule・eliminatedByIdの項目自体がない）は、ルール無効として読み込める", () => {
+    const fresh = newGameFixture();
+    const withoutBountyRule = edit(fresh, (d) => { delete d.settings.bountyRule; });
+    expect(parseGame(withoutBountyRule)).toEqual(fresh);
+
+    const finished = finishedGame();
+    const eliminated = edit(finished, (d) => {
+      d.events.push({ type: "PlayerEliminated", playerId: "A", at: "2026-09-20T12:00:00.000Z" });
+      // 古いデータには eliminatedById 自体が存在しない
+    });
+    const parsed = parseGame(eliminated);
+    const lastEvent = parsed.events[parsed.events.length - 1];
+    expect(lastEvent).toEqual({
+      type: "PlayerEliminated",
+      playerId: "A",
+      at: "2026-09-20T12:00:00.000Z",
+      eliminatedById: null,
+    });
+  });
+
+  test("ルールが無効なのに脱落させた人が指定されているものは拒否する", () => {
+    expectSchemaError(() =>
+      parseGame(edit(finishedGame(), (d) => {
+        d.events.push({
+          type: "PlayerEliminated",
+          playerId: "A",
+          at: "2026-09-20T12:00:00.000Z",
+          eliminatedById: "B",
+        });
+      })),
+    );
   });
 
   test("履歴が矛盾しているものは拒否する", () => {
@@ -111,6 +154,44 @@ describe("parseGameRecord", () => {
     expectSchemaError(() => parseGameRecord(edit(sampleRecord(), (d) => { d.handsPlayed = 0; })));
     expectSchemaError(() => parseGameRecord(edit(sampleRecord(), (d) => { d.settings.startingChips = 0; })));
     expectSchemaError(() => parseGameRecord(edit(sampleRecord(), (d) => { d.playedAt = "x"; })));
+  });
+
+  test("脱落ボーナスの内訳を含む記録は、そのまま読み込める", () => {
+    const bounty = sampleBountyRecord();
+    expect(bounty.bountyTransfers).toEqual([{ from: "B", to: "A", amount: 500 }]);
+    expect(parseGameRecord(viaJson(bounty))).toEqual(bounty);
+  });
+
+  test("古いデータ（bountyTransfers自体がない）は、空として読み込める", () => {
+    const record = sampleRecord();
+    const withoutField = edit(record, (d) => { delete d.bountyTransfers; });
+    expect(parseGameRecord(withoutField)).toEqual(record);
+  });
+
+  test("ルールが無効なのに脱落ボーナスの記録がある、送金相手や金額がルールと合わないものは拒否する", () => {
+    const bounty = sampleBountyRecord();
+    expectSchemaError(() =>
+      parseGameRecord(edit(bounty, (d) => { d.settings.bountyRule = null; })),
+    );
+    expectSchemaError(() =>
+      parseGameRecord(edit(bounty, (d) => { d.bountyTransfers[0].to = "Z"; })),
+    );
+    expectSchemaError(() =>
+      parseGameRecord(edit(bounty, (d) => { d.bountyTransfers[0].from = d.bountyTransfers[0].to; })),
+    );
+    expectSchemaError(() =>
+      parseGameRecord(edit(bounty, (d) => { d.bountyTransfers[0].amount = 100; })),
+    );
+  });
+});
+
+describe("parseSettlementRecord", () => {
+  test("古いデータ（bountyNetYen自体がない）は、0円として読み込める", () => {
+    const settlement = sampleSettlementRecord();
+    const withoutField = edit(settlement, (d) => {
+      for (const b of d.balances) delete b.bountyNetYen;
+    });
+    expect(parseSettlementRecord(withoutField)).toEqual(settlement);
   });
 });
 

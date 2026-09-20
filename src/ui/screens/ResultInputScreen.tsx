@@ -40,6 +40,8 @@ export function ResultInputScreen(): ReactNode {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  /** 脱落ボーナスのルールが有効なとき、脱落させる相手を選ぶために保留中の脱落対象 */
+  const [pendingEliminate, setPendingEliminate] = useState<string | null>(null);
 
   async function refreshAll() {
     const [g, s] = await Promise.all([
@@ -119,20 +121,29 @@ export function ResultInputScreen(): ReactNode {
     }
   }
 
-  async function toggleElimination(playerId: string, eliminated: boolean) {
+  async function toggleElimination(playerId: string, eliminated: boolean, eliminatedById?: string | null) {
     setBusy(true);
     try {
       if (eliminated) {
         await services.game.reinstatePlayer(playerId);
       } else {
-        await services.game.eliminatePlayer(playerId);
+        await services.game.eliminatePlayer(playerId, eliminatedById ?? null);
       }
       await refreshAll();
       setExpandedId(null);
+      setPendingEliminate(null);
     } catch (error) {
       notifyError(error);
     } finally {
       setBusy(false);
+    }
+  }
+
+  function requestEliminate(playerId: string) {
+    if (game!.game.settings.bountyRule !== null) {
+      setPendingEliminate(playerId);
+    } else {
+      void toggleElimination(playerId, false);
     }
   }
 
@@ -275,7 +286,7 @@ export function ResultInputScreen(): ReactNode {
                       variant="danger"
                       fullWidth
                       disabled={busy}
-                      onClick={() => toggleElimination(entry.playerId, false)}
+                      onClick={() => requestEliminate(entry.playerId)}
                     >
                       脱落させる
                     </Button>
@@ -286,6 +297,42 @@ export function ResultInputScreen(): ReactNode {
           );
         })}
       </ul>
+
+      {pendingEliminate && (
+        <div className="dialog-overlay" role="presentation" onClick={() => setPendingEliminate(null)}>
+          <div
+            className="dialog"
+            role="alertdialog"
+            aria-modal="true"
+            onClick={(event: { stopPropagation: () => void }) => event.stopPropagation()}
+          >
+            <h2 className="dialog-title">誰が脱落させましたか？</h2>
+            <p className="dialog-message">
+              {nameOf(pendingEliminate)}さんが、脱落ボーナスを渡す相手（そのハンドの勝者）を選んでください。
+            </p>
+            <div className="dealer-select-row">
+              {sheet.entries
+                .filter((e) => e.playerId !== pendingEliminate && e.kind !== "Eliminated")
+                .map((e) => (
+                  <button
+                    key={e.playerId}
+                    type="button"
+                    className="dealer-select-item"
+                    disabled={busy}
+                    onClick={() => toggleElimination(pendingEliminate, false, e.playerId)}
+                  >
+                    {nameOf(e.playerId)}
+                  </button>
+                ))}
+            </div>
+            <div className="dialog-actions">
+              <Button variant="ghost" onClick={() => setPendingEliminate(null)}>
+                キャンセル
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <Button variant="primary" fullWidth disabled={busy || !sheet.canSettle} onClick={handleNextGame}>
         次の対局へ

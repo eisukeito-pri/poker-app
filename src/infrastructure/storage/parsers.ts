@@ -14,6 +14,7 @@ import {
   reinstate,
 } from "../../domain/game/game";
 import type {
+  BountyRule,
   Game,
   GameEvent,
   GamePlayer,
@@ -161,6 +162,13 @@ function parseGamePlayer(value: unknown, path: string): GamePlayer {
   };
 }
 
+/** 古いデータ（この項目自体がない）は、まだルールがなかったので無効（null）扱い */
+function parseBountyRule(value: unknown, path: string): BountyRule | null {
+  if (value === null || value === undefined) return null;
+  const o = asObject(value, path);
+  return { amountYen: (asInt(o.amountYen, `${path}.amountYen`) + 0) as Yen };
+}
+
 function parseSettings(value: unknown, path: string): GameSettings {
   const o = asObject(value, path);
   const b = asObject(o.blindSchedule, `${path}.blindSchedule`);
@@ -173,6 +181,7 @@ function parseSettings(value: unknown, path: string): GameSettings {
       increaseAmount: asChips(b.increaseAmount, `${path}.blindSchedule.increaseAmount`),
     },
     exchangeRate: asInt(o.exchangeRate, `${path}.exchangeRate`) as MilliYenPerChip,
+    bountyRule: parseBountyRule(o.bountyRule, `${path}.bountyRule`),
   };
 }
 
@@ -202,7 +211,17 @@ function parseEvent(value: unknown, path: string): GameEvent {
   switch (type) {
     case "HandAdvanced":
       return { type, at };
-    case "PlayerEliminated":
+    case "PlayerEliminated": {
+      const raw = o.eliminatedById;
+      const eliminatedById =
+        raw === null || raw === undefined ? null : asId<PlayerId>(raw, `${path}.eliminatedById`);
+      return {
+        type,
+        at,
+        playerId: asId<PlayerId>(o.playerId, `${path}.playerId`),
+        eliminatedById,
+      };
+    }
     case "PlayerReinstated":
       return { type, at, playerId: asId<PlayerId>(o.playerId, `${path}.playerId`) };
     case "PlayEnded": {
@@ -253,7 +272,7 @@ function replayEvents(base: Game, events: readonly GameEvent[], path: string): G
           game = advanceHand(game, event.at);
           break;
         case "PlayerEliminated":
-          game = eliminate(game, event.playerId, event.at);
+          game = eliminate(game, event.playerId, event.at, event.eliminatedById);
           break;
         case "PlayerReinstated":
           game = reinstate(game, event.playerId, event.at);
@@ -390,9 +409,39 @@ export function parseGameRecord(value: unknown, path = "record"): GameRecord {
     }
   }
 
+  // 古いデータ（この項目自体がない）は、まだルールがなかったので空扱い
+  const bountyTransfers =
+    o.bountyTransfers === undefined
+      ? []
+      : mapArray(o.bountyTransfers, `${path}.bountyTransfers`, parseTransfer);
+  if (settings.bountyRule === null) {
+    if (bountyTransfers.length > 0) {
+      throw new SchemaError(`${path}.bountyTransfers`, "ルールが無効なのに脱落ボーナスの記録があります");
+    }
+  } else {
+    bountyTransfers.forEach((t, i) => {
+      if (!playerIds.has(t.from) || !playerIds.has(t.to) || t.from === t.to) {
+        throw new SchemaError(`${path}.bountyTransfers[${i}]`, "送金の相手が不正です");
+      }
+      if (t.amount !== settings.bountyRule?.amountYen) {
+        throw new SchemaError(`${path}.bountyTransfers[${i}]`, "金額がルールの設定と合っていません");
+      }
+    });
+  }
+
   const settledAt = asIsoOrNull(o.settledAt, `${path}.settledAt`);
 
-  return { gameId, playedAt, settings, players, handsPlayed, results, transfers, settledAt };
+  return {
+    gameId,
+    playedAt,
+    settings,
+    players,
+    handsPlayed,
+    results,
+    transfers,
+    bountyTransfers,
+    settledAt,
+  };
 }
 
 export function parseGameRecords(value: unknown, path = "records"): GameRecord[] {
@@ -405,10 +454,14 @@ export function parseGameRecords(value: unknown, path = "records"): GameRecord[]
 
 function parsePlayerYenBalance(value: unknown, path: string): PlayerYenBalance {
   const o = asObject(value, path);
+  // 古いデータ（この項目自体がない）は、まだルールがなかったので0扱い
+  const bountyNetYen =
+    o.bountyNetYen === undefined ? 0 : (asInt(o.bountyNetYen, `${path}.bountyNetYen`) + 0);
   return {
     playerId: asId<PlayerId>(o.playerId, `${path}.playerId`),
     name: asNonEmptyString(o.name, `${path}.name`),
     netYen: (asInt(o.netYen, `${path}.netYen`) + 0) as Yen,
+    bountyNetYen: bountyNetYen as Yen,
   };
 }
 

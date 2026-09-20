@@ -8,6 +8,7 @@ const settings = {
   totalHands: 10,
   blindSchedule: { initialBigBlind: chips(100), increaseEveryHands: 5, increaseAmount: chips(0) },
   exchangeRate: exchangeRateFromYen(0.1),
+  bountyRule: null,
 };
 
 /** rows: [ID, 記録時点の名前, 円の収支] */
@@ -24,6 +25,7 @@ function record(id: string, playedAt: string, rows: [string, string, number][]):
       netYen: yen(net),
     })),
     transfers: [],
+    bountyTransfers: [],
     settledAt: null,
   };
 }

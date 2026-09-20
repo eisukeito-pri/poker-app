@@ -26,6 +26,8 @@ interface FormFields {
   blindIncreaseEveryHands: string;
   blindIncreaseAmount: string;
   yenPerChip: string;
+  bountyRuleEnabled: boolean;
+  bountyAmountYen: string;
 }
 
 function toFields(defaults: {
@@ -35,6 +37,8 @@ function toFields(defaults: {
   blindIncreaseEveryHands: number;
   blindIncreaseAmount: number;
   yenPerChip: number;
+  bountyRuleEnabled: boolean;
+  bountyAmountYen: number;
 }): FormFields {
   return {
     startingChips: String(defaults.startingChips),
@@ -43,6 +47,8 @@ function toFields(defaults: {
     blindIncreaseEveryHands: String(defaults.blindIncreaseEveryHands),
     blindIncreaseAmount: String(defaults.blindIncreaseAmount),
     yenPerChip: String(defaults.yenPerChip),
+    bountyRuleEnabled: defaults.bountyRuleEnabled,
+    bountyAmountYen: String(defaults.bountyAmountYen),
   };
 }
 
@@ -54,6 +60,7 @@ function fieldProblem(fields: FormFields): string | null {
   const every = Number(fields.blindIncreaseEveryHands);
   const amount = Number(fields.blindIncreaseAmount);
   const rate = Number(fields.yenPerChip);
+  const bountyAmount = Number(fields.bountyAmountYen);
 
   if (!Number.isInteger(chips) || chips <= 0) return "開始チップは1以上の整数で入力してください。";
   if (!Number.isInteger(hands) || hands < 1) return "ハンド数は1以上の整数で入力してください。";
@@ -61,6 +68,9 @@ function fieldProblem(fields: FormFields): string | null {
   if (!Number.isInteger(every) || every < 1) return "ブラインド上昇の間隔は1以上の整数で入力してください。";
   if (!Number.isInteger(amount) || amount < 0) return "ブラインドの上昇額は0以上の整数で入力してください。";
   if (!Number.isFinite(rate) || rate <= 0) return "換算レートは0より大きい数で入力してください。";
+  if (fields.bountyRuleEnabled && (!Number.isInteger(bountyAmount) || bountyAmount < 1)) {
+    return "脱落ボーナスの金額は1円以上の整数で入力してください。";
+  }
   return null;
 }
 
@@ -109,6 +119,8 @@ export function SetupScreen(): ReactNode {
     blindIncreaseEveryHands: 5,
     blindIncreaseAmount: 50,
     yenPerChip: 0.1,
+    bountyRuleEnabled: false,
+    bountyAmountYen: 100,
   }));
   const [submitting, setSubmitting] = useState(false);
   const [revealing, setRevealing] = useState(false);
@@ -252,6 +264,8 @@ export function SetupScreen(): ReactNode {
       blindIncreaseEveryHands: Number(fields.blindIncreaseEveryHands),
       blindIncreaseAmount: Number(fields.blindIncreaseAmount),
       yenPerChip: Number(fields.yenPerChip),
+      bountyRuleEnabled: fields.bountyRuleEnabled,
+      bountyAmountYen: Number(fields.bountyAmountYen),
     };
 
     setSubmitting(true);
@@ -473,6 +487,37 @@ export function SetupScreen(): ReactNode {
           value={fields.blindIncreaseAmount}
           onChange={(v) => setFields((f) => ({ ...f, blindIncreaseAmount: v }))}
         />
+      </section>
+
+      <section className="setup-section">
+        <h2 className="setup-section-title">オプションルール：脱落ボーナス</h2>
+        <p className="section-hint">
+          脱落した人が、脱落させた人（そのハンドの勝者）に、決めた金額を渡します。チップには影響せず、精算額だけが変わります。
+        </p>
+        <div className="dealer-select-row">
+          <button
+            type="button"
+            className={`dealer-select-item${!fields.bountyRuleEnabled ? " is-selected" : ""}`}
+            onClick={() => setFields((f) => ({ ...f, bountyRuleEnabled: false }))}
+          >
+            オフ
+          </button>
+          <button
+            type="button"
+            className={`dealer-select-item${fields.bountyRuleEnabled ? " is-selected" : ""}`}
+            onClick={() => setFields((f) => ({ ...f, bountyRuleEnabled: true }))}
+          >
+            オン
+          </button>
+        </div>
+        {fields.bountyRuleEnabled && (
+          <NumberField
+            label="脱落ボーナスの金額"
+            value={fields.bountyAmountYen}
+            suffix="円"
+            onChange={(v) => setFields((f) => ({ ...f, bountyAmountYen: v }))}
+          />
+        )}
       </section>
 
       <Button variant="primary" fullWidth disabled={submitting || revealing} onClick={submit}>

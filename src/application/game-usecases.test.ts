@@ -56,6 +56,8 @@ const basicRequest = (alice: Player, bob: Player, carol: Player) => ({
   blindIncreaseEveryHands: 5,
   blindIncreaseAmount: 50,
   yenPerChip: 0.1,
+  bountyRuleEnabled: false,
+  bountyAmountYen: 100,
 });
 
 describe("getSetupDefaults", () => {
@@ -78,6 +80,8 @@ describe("getSetupDefaults", () => {
       yenPerChip: 0.1,
       seatOrder: [alice.id, bob.id, carol.id],
       isFromLastGame: true,
+      bountyRuleEnabled: false,
+      bountyAmountYen: 100,
     });
   });
 

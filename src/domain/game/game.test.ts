@@ -4,11 +4,13 @@ import {
   exchangeRateFromYen,
   gameId,
   playerId,
+  yen,
 } from "../shared/constructors";
 import { DomainError } from "../shared/errors";
 import type { DomainErrorCode } from "../shared/errors";
 import {
   advanceHand,
+  bountyTransfersOf,
   create,
   endPlay,
   eliminate,
@@ -29,6 +31,7 @@ const baseSettings: GameSettings = {
     increaseAmount: chips(50),
   },
   exchangeRate: exchangeRateFromYen(0.1),
+  bountyRule: null,
 };
 
 function newGame(
@@ -304,6 +307,7 @@ describe("結果入力待ちでの脱落・復帰", () => {
       type: "PlayerEliminated",
       playerId: "B",
       at: NOW,
+      eliminatedById: null,
     });
 
     const reinstated = project(reinstate(eliminated, playerId("B"), NOW));
@@ -356,6 +360,7 @@ describe("元に戻す", () => {
       type: "PlayerEliminated",
       playerId: "C",
       at: NOW,
+      eliminatedById: null,
     });
   });
 
@@ -478,5 +483,82 @@ describe("対局の作成時の検証", () => {
         }),
       "INVALID_SETTINGS",
     );
+    expectCode(
+      () => newGame({ bountyRule: { amountYen: yen(0) } }),
+      "INVALID_SETTINGS",
+    );
+  });
+});
+
+describe("オプションルール：脱落ボーナス", () => {
+  const withBounty = (ids?: readonly string[]) =>
+    newGame({ bountyRule: { amountYen: yen(500) } }, ids);
+
+  test("ルールが無効なら、脱落させた人を指定できない", () => {
+    expectCode(
+      () => eliminate(newGame(), playerId("B"), NOW, playerId("A")),
+      "INVALID_BOUNTY_RECIPIENT",
+    );
+  });
+
+  test("ルールが有効なら、脱落させた人の指定が必須", () => {
+    expectCode(() => eliminate(withBounty(), playerId("B"), NOW), "BOUNTY_RECIPIENT_REQUIRED");
+    expectCode(
+      () => eliminate(withBounty(), playerId("B"), NOW, null),
+      "BOUNTY_RECIPIENT_REQUIRED",
+    );
+  });
+
+  test("本人は選べない", () => {
+    expectCode(
+      () => eliminate(withBounty(), playerId("B"), NOW, playerId("B")),
+      "INVALID_BOUNTY_RECIPIENT",
+    );
+  });
+
+  test("すでに脱落している人は選べない", () => {
+    const game = eliminate(withBounty(), playerId("B"), NOW, playerId("A"));
+    expectCode(
+      () => eliminate(game, playerId("C"), NOW, playerId("B")),
+      "INVALID_BOUNTY_RECIPIENT",
+    );
+  });
+
+  test("参加者以外は選べない", () => {
+    expectCode(
+      () => eliminate(withBounty(), playerId("B"), NOW, playerId("Z")),
+      "PLAYER_NOT_FOUND",
+    );
+  });
+
+  test("bountyTransfersOf：ルールが無効なら常に空", () => {
+    const game = eliminate(newGame(), playerId("B"), NOW);
+    expect(bountyTransfersOf(game)).toEqual([]);
+  });
+
+  test("bountyTransfersOf：脱落させた人ごとの送金リストになる", () => {
+    let game = withBounty();
+    game = eliminate(game, playerId("B"), NOW, playerId("A"));
+    game = eliminate(game, playerId("C"), NOW, playerId("A"));
+    expect(bountyTransfersOf(game)).toEqual([
+      { from: "B", to: "A", amount: 500 },
+      { from: "C", to: "A", amount: 500 },
+    ]);
+  });
+
+  test("bountyTransfersOf：復帰すると、その分の送金は取り消される", () => {
+    let game = withBounty();
+    game = eliminate(game, playerId("B"), NOW, playerId("A"));
+    game = eliminate(game, playerId("C"), NOW, playerId("A"));
+    game = reinstate(game, playerId("B"), NOW);
+    expect(bountyTransfersOf(game)).toEqual([{ from: "C", to: "A", amount: 500 }]);
+  });
+
+  test("同じ人を再び脱落させると、新しい相手の送金だけが残る", () => {
+    let game = withBounty();
+    game = eliminate(game, playerId("B"), NOW, playerId("A"));
+    game = reinstate(game, playerId("B"), NOW);
+    game = eliminate(game, playerId("B"), NOW, playerId("C"));
+    expect(bountyTransfersOf(game)).toEqual([{ from: "B", to: "C", amount: 500 }]);
   });
 });

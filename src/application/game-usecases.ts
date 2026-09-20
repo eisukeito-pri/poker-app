@@ -30,6 +30,7 @@ import {
   chips,
   exchangeRateFromYen,
   playerId,
+  yen,
 } from "../domain/shared/constructors";
 import { DomainError } from "../domain/shared/errors";
 import type { PlayerId } from "../domain/shared/types";
@@ -46,12 +47,14 @@ import type {
 
 /** 前回の設定がないときの初期値 */
 export const DEFAULT_SETUP: Omit<SetupDefaults, "seatOrder" | "isFromLastGame"> = {
-  startingChips: 10000,
+  startingChips: 1000,
   totalHands: 20,
-  initialBigBlind: 200,
+  initialBigBlind: 100,
   blindIncreaseEveryHands: 5,
-  blindIncreaseAmount: 200,
+  blindIncreaseAmount: 50,
   yenPerChip: 0.1,
+  bountyRuleEnabled: false,
+  bountyAmountYen: 100,
 };
 
 export interface GameUseCasesDeps {
@@ -101,6 +104,8 @@ export class GameUseCasesImpl implements GameUseCases {
       yenPerChip: settings.exchangeRate / 1000,
       seatOrder,
       isFromLastGame: true,
+      bountyRuleEnabled: settings.bountyRule !== null,
+      bountyAmountYen: settings.bountyRule?.amountYen ?? DEFAULT_SETUP.bountyAmountYen,
     };
   }
 
@@ -149,6 +154,9 @@ export class GameUseCasesImpl implements GameUseCases {
         increaseAmount: chips(request.blindIncreaseAmount),
       },
       exchangeRate: exchangeRateFromYen(request.yenPerChip),
+      bountyRule: request.bountyRuleEnabled
+        ? { amountYen: yen(request.bountyAmountYen) }
+        : null,
     };
 
     const id = this.deps.idGen.newGameId();
@@ -180,9 +188,10 @@ export class GameUseCasesImpl implements GameUseCases {
     return this.toView(next);
   }
 
-  async eliminatePlayer(playerIdRaw: string): Promise<GameView> {
+  async eliminatePlayer(playerIdRaw: string, eliminatedByRaw?: string | null): Promise<GameView> {
     const game = await this.requireCurrentGame();
-    const next = domainEliminate(game, playerId(playerIdRaw), this.deps.clock.now());
+    const eliminatedById = eliminatedByRaw ? playerId(eliminatedByRaw) : null;
+    const next = domainEliminate(game, playerId(playerIdRaw), this.deps.clock.now(), eliminatedById);
     await this.deps.gameRepo.saveCurrent(next);
     return this.toView(next);
   }

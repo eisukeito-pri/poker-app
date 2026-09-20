@@ -12,6 +12,7 @@ import type {
   IsoDateTime,
   MilliYenPerChip,
   PlayerId,
+  Yen,
 } from "../shared/types";
 
 /* ───────── 値オブジェクト ───────── */
@@ -37,6 +38,16 @@ export interface Blinds {
   readonly bigBlind: Chips;
 }
 
+/**
+ * オプションルール：「脱落ボーナス」。
+ * 脱落した人が、脱落させた人（そのハンドの勝者）に、決めた金額（円）を渡す。
+ * チップのやりとりには影響しないが、最終的な精算額に反映される。
+ * null なら無効（初期設定）。
+ */
+export interface BountyRule {
+  readonly amountYen: Yen;
+}
+
 export interface GameSettings {
   /** 全員共通の開始チップ */
   readonly startingChips: Chips;
@@ -45,6 +56,8 @@ export interface GameSettings {
   readonly blindSchedule: BlindSchedule;
   /** 換算レート（1チップ＝何円か。1/1000円単位の整数） */
   readonly exchangeRate: MilliYenPerChip;
+  /** 脱落ボーナスのルール。無効なら null */
+  readonly bountyRule: BountyRule | null;
 }
 
 /* ───────── 出来事（イベント） ───────── */
@@ -61,6 +74,11 @@ export interface HandAdvanced extends GameEventBase {
 export interface PlayerEliminated extends GameEventBase {
   readonly type: "PlayerEliminated";
   readonly playerId: PlayerId;
+  /**
+   * 脱落ボーナスのルールが有効なとき、脱落させた人（そのハンドの勝者。
+   * 脱落した人からこの人へ、決めた金額が渡る）。ルールが無効なら null
+   */
+  readonly eliminatedById: PlayerId | null;
 }
 
 export interface PlayerReinstated extends GameEventBase {
@@ -173,8 +191,17 @@ export interface GameOperations {
   project(game: Game): GameState;
   /** 次のハンドへ。親を次の生存者へ移す。最終ハンドでは NO_MORE_HANDS */
   advanceHand(game: Game, now: IsoDateTime): Game;
-  /** 脱落。最後の生存者は不可（LAST_SURVIVOR）。結果入力待ちでも可。生存者が1人になったら呼び出し側が endPlay する */
-  eliminate(game: Game, playerId: PlayerId, now: IsoDateTime): Game;
+  /**
+   * 脱落。最後の生存者は不可（LAST_SURVIVOR）。結果入力待ちでも可。
+   * 生存者が1人になったら呼び出し側が endPlay する。
+   * 脱落ボーナスのルールが有効な対局では、eliminatedById（脱落させた人）が必須
+   */
+  eliminate(
+    game: Game,
+    playerId: PlayerId,
+    now: IsoDateTime,
+    eliminatedById?: PlayerId | null,
+  ): Game;
   /** 復帰。結果入力待ちでも可 */
   reinstate(game: Game, playerId: PlayerId, now: IsoDateTime): Game;
   /** 「結果入力へ」。最終ハンド or 生存者1人のときのみ可能 */

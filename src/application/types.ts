@@ -54,6 +54,9 @@ export interface SetupDefaults {
   /** 前回の参加者と座席順。名簿から削除された人は除いてある */
   readonly seatOrder: readonly PlayerId[];
   readonly isFromLastGame: boolean;
+  /** 脱落ボーナスのオプションルール。前回オフだった場合、金額は前回入力していた値かアプリの既定値 */
+  readonly bountyRuleEnabled: boolean;
+  readonly bountyAmountYen: number;
 }
 
 export interface StartGameRequest {
@@ -67,6 +70,9 @@ export interface StartGameRequest {
   readonly blindIncreaseEveryHands: number;
   readonly blindIncreaseAmount: number;
   readonly yenPerChip: number;
+  /** オプションルール「脱落ボーナス」。オンなら bountyAmountYen（1円以上）が必要 */
+  readonly bountyRuleEnabled: boolean;
+  readonly bountyAmountYen: number;
   /**
    * 進行中の対局があるときに、破棄して始めるか。
    * false／未指定なら GAME_IN_PROGRESS（UIが確認ダイアログを出してから true で呼ぶ）
@@ -82,8 +88,11 @@ export interface GameUseCases {
   /** アプリ起動時に、進行中の対局があれば復元する */
   getCurrentGame(): Promise<GameView | null>;
   advanceHand(): Promise<GameView>;
-  /** 生存者が1人になっても自動では進まない（主ボタンが「結果入力へ」に変わる） */
-  eliminatePlayer(playerId: string): Promise<GameView>;
+  /**
+   * 生存者が1人になっても自動では進まない（主ボタンが「結果入力へ」に変わる）。
+   * 脱落ボーナスのルールが有効な対局では、eliminatedById（脱落させた人）が必須
+   */
+  eliminatePlayer(playerId: string, eliminatedById?: string | null): Promise<GameView>;
   reinstatePlayer(playerId: string): Promise<GameView>;
   /** 「結果入力へ」 */
   endPlay(): Promise<GameView>;

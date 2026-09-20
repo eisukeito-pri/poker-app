@@ -126,6 +126,24 @@ export function HistoryDetailScreen(props: HistoryDetailScreenProps): ReactNode 
           </ul>
         )}
       </section>
+
+      {record.bountyTransfers.length > 0 && (
+        <section className="setup-section">
+          <h2 className="setup-section-title">
+            脱落ボーナスの内訳（上記の収支・受け渡しに含まれています）
+          </h2>
+          <ul className="settlement-transfer-list">
+            {record.bountyTransfers.map((transfer, index) => (
+              <li key={index} className="settlement-transfer-item">
+                <span>{nameOf(transfer.from)}</span>
+                <span className="settlement-transfer-arrow">→</span>
+                <span>{nameOf(transfer.to)}</span>
+                <span className="settlement-transfer-amount">{formatYen(transfer.amount)}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
     </div>
   );
 }

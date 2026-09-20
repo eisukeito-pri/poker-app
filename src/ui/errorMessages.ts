@@ -31,6 +31,8 @@ const MESSAGES: Record<DomainErrorCode, string> = {
   RECORD_NOT_FOUND: "記録が見つかりません。",
   NO_PENDING_SETTLEMENT: "未精算の対局がありません。",
   SETTLEMENT_NOT_FOUND: "精算の記録が見つかりません。",
+  BOUNTY_RECIPIENT_REQUIRED: "脱落させた人を選んでください。",
+  INVALID_BOUNTY_RECIPIENT: "脱落させた人の指定が正しくありません。",
 };
 
 /** 画面に出すためのメッセージ。DomainError以外は汎用の文言にする */

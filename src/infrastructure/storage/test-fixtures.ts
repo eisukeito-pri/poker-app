@@ -1,6 +1,6 @@
 /** テスト専用のサンプルデータ（アプリ本体からは import しない） */
 import type { BackupData } from "../../application/types";
-import { advanceHand, create, endPlay } from "../../domain/game/game";
+import { advanceHand, create, eliminate, endPlay } from "../../domain/game/game";
 import type { Game, GameSettings } from "../../domain/game/types";
 import { createGameRecord } from "../../domain/roster/record";
 import type { GameRecord, Player, SettlementRecord } from "../../domain/roster/types";
@@ -28,6 +28,7 @@ export function sampleSettings(): GameSettings {
       increaseAmount: chips(50),
     },
     exchangeRate: exchangeRateFromYen(0.1),
+    bountyRule: null,
   };
 }
 
@@ -69,11 +70,48 @@ export function sampleRecord(id = "g1", createdAt = T0): GameRecord {
   return createGameRecord({ game: finishedGame(id, createdAt), settlement });
 }
 
+/** 脱落ボーナスのルール（500円）が有効な設定 */
+export function sampleBountySettings(): GameSettings {
+  return { ...sampleSettings(), bountyRule: { amountYen: yen(500) } };
+}
+
+/** 脱落ボーナスのルールが有効な対局を始めたところ（履歴なし） */
+export function newBountyGameFixture(id = "g1", createdAt = T0): Game {
+  return create(
+    {
+      seats: samplePlayers().map((p) => ({ id: p.id, name: p.name })),
+      initialDealerId: playerId("A"),
+      settings: sampleBountySettings(),
+    },
+    gameId(id),
+    createdAt,
+  );
+}
+
+/** 脱落ボーナスのルールが有効なまま、Bを脱落させて（Aへ）最終ハンドまで進めた対局 */
+export function finishedBountyGame(id = "g1", createdAt = T0): Game {
+  const advanced = advanceHand(advanceHand(newBountyGameFixture(id, createdAt), T1), T1);
+  return endPlay(eliminate(advanced, playerId("B"), T1, playerId("A")), T1);
+}
+
+/** 脱落ボーナス（B→A、500円）を含む確定記録 */
+export function sampleBountyRecord(id = "g1", createdAt = T0): GameRecord {
+  const settlement = calculateSettlement(
+    [
+      { playerId: playerId("A"), netChips: chips(1000) },
+      { playerId: playerId("B"), netChips: chips(-400) },
+      { playerId: playerId("C"), netChips: chips(-600) },
+    ],
+    sampleBountySettings().exchangeRate,
+  );
+  return createGameRecord({ game: finishedBountyGame(id, createdAt), settlement });
+}
+
 export function sampleSettlementRecord(id = "s1", settledAt = T1): SettlementRecord {
   const balances = [
-    { playerId: playerId("A"), name: "Alice", netYen: yen(100) },
-    { playerId: playerId("B"), name: "Bob", netYen: yen(-40) },
-    { playerId: playerId("C"), name: "Carol", netYen: yen(-60) },
+    { playerId: playerId("A"), name: "Alice", netYen: yen(100), bountyNetYen: yen(0) },
+    { playerId: playerId("B"), name: "Bob", netYen: yen(-40), bountyNetYen: yen(0) },
+    { playerId: playerId("C"), name: "Carol", netYen: yen(-60), bountyNetYen: yen(0) },
   ];
   return {
     id: settlementId(id),

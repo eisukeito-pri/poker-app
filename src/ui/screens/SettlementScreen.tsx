@@ -87,7 +87,16 @@ export function SettlementScreen(): ReactNode {
         <ul className="settlement-result-list">
           {view.balances.map((balance) => (
             <li key={balance.playerId} className="settlement-result-item">
-              <span className="settlement-result-name">{balance.name}</span>
+              <span className="settlement-result-name">
+                {balance.name}
+                {balance.bountyNetYen !== 0 && (
+                  <span className="section-hint">
+                    {" "}
+                    （うち脱落ボーナス：{balance.bountyNetYen > 0 ? "+" : ""}
+                    {formatYen(balance.bountyNetYen)}）
+                  </span>
+                )}
+              </span>
               <span
                 className={`settlement-result-amount${
                   balance.netYen > 0

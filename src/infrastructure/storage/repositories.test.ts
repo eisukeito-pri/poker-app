@@ -164,7 +164,9 @@ describe("StorageGameRepository", () => {
     const game = newGameFixture();
     const broken = {
       ...game,
-      events: [{ type: "PlayerEliminated" as const, playerId: playerId("Z"), at: T0 }],
+      events: [
+        { type: "PlayerEliminated" as const, playerId: playerId("Z"), at: T0, eliminatedById: null },
+      ],
     };
     await expectRejects(() => repo.saveCurrent(broken), "STORAGE_FAILED");
     expect(await repo.findCurrent()).toBeNull();

@@ -21,6 +21,7 @@ import { handNumber } from "../shared/constructors";
 import { DomainError } from "../shared/errors";
 import { MAX_PLAYERS, MIN_PLAYERS } from "../shared/types";
 import type { GameId, IsoDateTime, PlayerId } from "../shared/types";
+import type { Transfer } from "../settlement/types";
 import { blindsAt, handsUntilIncrease } from "./blinds";
 import type {
   Game,
@@ -185,6 +186,9 @@ function validateSettings(settings: GameSettings): void {
   if (!isPositiveInteger(settings.exchangeRate)) {
     problems.push("換算レートが不正です");
   }
+  if (settings.bountyRule !== null && !isPositiveInteger(settings.bountyRule.amountYen)) {
+    problems.push("脱落ボーナスの金額は1以上の整数");
+  }
   if (problems.length > 0) {
     throw new DomainError("INVALID_SETTINGS", problems.join(" / "));
   }
@@ -272,11 +276,16 @@ export function advanceHand(game: Game, now: IsoDateTime): Game {
   return append(game, { type: "HandAdvanced", at: now });
 }
 
-/** 脱落。最後の生存者は脱落させられない。結果入力待ちでも可 */
+/**
+ * 脱落。最後の生存者は脱落させられない。結果入力待ちでも可。
+ * 脱落ボーナスのルールが有効な対局では、eliminatedById（脱落させた人。
+ * 参加者のうち、脱落する本人以外の、今まさに脱落していない人）が必須
+ */
 export function eliminate(
   game: Game,
   playerId: PlayerId,
   now: IsoDateTime,
+  eliminatedById: PlayerId | null = null,
 ): Game {
   const state = project(game);
   requireSeat(game, playerId);
@@ -286,7 +295,61 @@ export function eliminate(
   if (state.activePlayerIds.length <= 1) {
     throw new DomainError("LAST_SURVIVOR", "最後の生存者は脱落させられません");
   }
-  return append(game, { type: "PlayerEliminated", playerId, at: now });
+
+  const rule = game.settings.bountyRule;
+  if (rule === null) {
+    if (eliminatedById !== null) {
+      throw new DomainError(
+        "INVALID_BOUNTY_RECIPIENT",
+        "この対局では脱落ボーナスのルールが無効です",
+      );
+    }
+  } else {
+    if (eliminatedById === null) {
+      throw new DomainError(
+        "BOUNTY_RECIPIENT_REQUIRED",
+        "脱落ボーナスのルールが有効です。脱落させた人を選んでください",
+      );
+    }
+    if (eliminatedById === playerId) {
+      throw new DomainError("INVALID_BOUNTY_RECIPIENT", "本人は選べません");
+    }
+    requireSeat(game, eliminatedById);
+    if (state.eliminatedPlayerIds.includes(eliminatedById)) {
+      throw new DomainError(
+        "INVALID_BOUNTY_RECIPIENT",
+        "脱落している人は選べません",
+      );
+    }
+  }
+
+  return append(game, { type: "PlayerEliminated", playerId, at: now, eliminatedById });
+}
+
+/**
+ * 脱落ボーナスのルールによる、現時点で有効な送金の一覧を返す（ルール無効なら空配列）。
+ * 脱落した人 → 脱落させた人、へ決めた金額。
+ * 誤操作で「復帰」させた場合は、そのときの受け渡しも取り消したものとして扱う
+ * （同じ人がその後もう一度脱落すれば、そのときの相手が新たに記録される）。
+ */
+export function bountyTransfersOf(game: Game): readonly Transfer[] {
+  const rule = game.settings.bountyRule;
+  if (rule === null) return [];
+
+  const current = new Map<PlayerId, PlayerId>();
+  for (const event of game.events) {
+    if (event.type === "PlayerEliminated" && event.eliminatedById !== null) {
+      current.set(event.playerId, event.eliminatedById);
+    } else if (event.type === "PlayerReinstated") {
+      current.delete(event.playerId);
+    }
+  }
+
+  return [...current.entries()].map(([eliminatedId, eliminatedById]) => ({
+    from: eliminatedId,
+    to: eliminatedById,
+    amount: rule.amountYen,
+  }));
 }
 
 /** 復帰。結果入力待ちでも可 */
