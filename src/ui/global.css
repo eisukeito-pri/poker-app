@@ -1,0 +1,289 @@
+/*
+ * 全体のスタイル。方針：
+ * - スマホ縦持ち・卓上での操作を前提に、タップ領域を大きくする
+ * - 色はCSS変数にまとめ、後で配色を変えやすくする
+ * - ダークモードは自動追従（prefers-color-scheme）
+ * - 端末のセーフエリア（ノッチなど）に、下部の大きいボタンがかぶらないようにする
+ */
+
+:root {
+  --color-bg: #f5f5f3;
+  --color-surface: #ffffff;
+  --color-text: #1a1a1a;
+  --color-text-muted: #6b6b6b;
+  --color-border: #dcdcd8;
+
+  --color-primary: #1f6f4a; /* ポーカーテーブルの緑 */
+  --color-primary-text: #ffffff;
+  --color-danger: #b3382c;
+  --color-danger-text: #ffffff;
+  --color-accent: #c9932f; /* SB/BBなどのアクセント（金） */
+
+  --color-toast-info-bg: #1a1a1a;
+  --color-toast-error-bg: #b3382c;
+  --color-toast-text: #ffffff;
+
+  --radius: 12px;
+  --gutter: 16px;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-top: env(safe-area-inset-top, 0px);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-bg: #14181a;
+    --color-surface: #1f2426;
+    --color-text: #f2f2f0;
+    --color-text-muted: #a3a3a0;
+    --color-border: #33393b;
+
+    --color-primary: #2f9464;
+    --color-danger: #d9584a;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: "Hiragino Sans", "Yu Gothic", system-ui, -apple-system, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+
+button {
+  font-family: inherit;
+}
+
+/* スマホでボタンを連打しても、テキスト選択や二重タップズームが起きないようにする */
+button,
+.screen-header,
+.home-menu {
+  touch-action: manipulation;
+  user-select: none;
+}
+
+.screen {
+  min-height: 100%;
+  padding: calc(var(--gutter) + var(--safe-top)) var(--gutter)
+    calc(var(--gutter) + var(--safe-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: var(--gutter);
+}
+
+.loading-screen {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-muted);
+}
+
+/* ── 見出し ───────────────────────────── */
+
+.screen-header {
+  display: grid;
+  grid-template-columns: 40px 1fr 40px;
+  align-items: center;
+}
+
+.screen-title {
+  margin: 0;
+  font-size: 1.1rem;
+  text-align: center;
+}
+
+.screen-header-left,
+.screen-header-right {
+  display: flex;
+  align-items: center;
+}
+
+.screen-header-right {
+  justify-content: flex-end;
+}
+
+.icon-button {
+  width: 40px;
+  height: 40px;
+  border: none;
+  background: transparent;
+  color: var(--color-text);
+  font-size: 1.25rem;
+  border-radius: 999px;
+}
+
+.icon-button:active {
+  background: var(--color-border);
+}
+
+/* ── ボタン ───────────────────────────── */
+
+.btn {
+  min-height: 48px;
+  padding: 12px 20px;
+  border-radius: var(--radius);
+  border: 1px solid transparent;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-full {
+  width: 100%;
+}
+
+.btn-primary {
+  background: var(--color-primary);
+  color: var(--color-primary-text);
+}
+
+.btn-secondary {
+  background: var(--color-surface);
+  color: var(--color-text);
+  border-color: var(--color-border);
+}
+
+.btn-danger {
+  background: var(--color-danger);
+  color: var(--color-danger-text);
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--color-text-muted);
+  border-color: var(--color-border);
+}
+
+.btn:active {
+  transform: scale(0.98);
+}
+
+/* ── ホーム画面 ───────────────────────────── */
+
+.app-title {
+  text-align: center;
+  font-size: 1.4rem;
+  margin: 12px 0 0;
+}
+
+.home-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+/* ── 案内バナー ───────────────────────────── */
+
+.banner {
+  background: var(--color-accent);
+  color: #1a1a1a;
+  padding: 12px 16px;
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+}
+
+.placeholder-text {
+  color: var(--color-text-muted);
+  text-align: center;
+  margin-top: 40px;
+}
+
+/* ── トースト ───────────────────────────── */
+
+.toast-host {
+  position: fixed;
+  left: var(--gutter);
+  right: var(--gutter);
+  bottom: calc(var(--gutter) + var(--safe-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 1000;
+}
+
+.toast {
+  padding: 12px 16px;
+  border-radius: var(--radius);
+  color: var(--color-toast-text);
+  font-size: 0.9rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.toast-info {
+  background: var(--color-toast-info-bg);
+}
+
+.toast-error {
+  background: var(--color-toast-error-bg);
+}
+
+/* ── 確認ダイアログ ───────────────────────────── */
+
+.dialog-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 2000;
+}
+
+@media (min-width: 480px) {
+  .dialog-overlay {
+    align-items: center;
+  }
+}
+
+.dialog {
+  background: var(--color-surface);
+  color: var(--color-text);
+  width: 100%;
+  max-width: 420px;
+  border-radius: var(--radius) var(--radius) 0 0;
+  padding: 20px var(--gutter) calc(20px + var(--safe-bottom));
+}
+
+@media (min-width: 480px) {
+  .dialog {
+    border-radius: var(--radius);
+  }
+}
+
+.dialog-title {
+  margin: 0 0 8px;
+  font-size: 1.1rem;
+}
+
+.dialog-message {
+  margin: 0 0 20px;
+  color: var(--color-text-muted);
+  white-space: pre-wrap;
+}
+
+.dialog-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+.dialog-actions .btn {
+  min-width: 100px;
+}
