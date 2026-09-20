@@ -46,11 +46,11 @@ import type {
 
 /** 前回の設定がないときの初期値 */
 export const DEFAULT_SETUP: Omit<SetupDefaults, "seatOrder" | "isFromLastGame"> = {
-  startingChips: 1000,
+  startingChips: 10000,
   totalHands: 20,
-  initialBigBlind: 100,
+  initialBigBlind: 200,
   blindIncreaseEveryHands: 5,
-  blindIncreaseAmount: 50,
+  blindIncreaseAmount: 200,
   yenPerChip: 0.1,
 };
 
