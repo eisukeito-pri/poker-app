@@ -72,7 +72,10 @@ export type PlayEndReason =
   | "AllHandsPlayed" // 最終ハンドで「結果入力へ」を押した
   | "SingleSurvivor"; // 生存者が1人になった
 
-/** 対局（プレイ）の終了。結果入力へ進む。戻すと取り消せる */
+/**
+ * 対局（プレイ）の終了。結果入力へ進む。戻すと取り消せる。
+ * これ以降もハンドは進められないが、脱落・復帰の変更はできる（reasonは記録用）。
+ */
 export interface PlayEnded extends GameEventBase {
   readonly type: "PlayEnded";
   readonly reason: PlayEndReason;
@@ -170,8 +173,9 @@ export interface GameOperations {
   project(game: Game): GameState;
   /** 次のハンドへ。親を次の生存者へ移す。最終ハンドでは NO_MORE_HANDS */
   advanceHand(game: Game, now: IsoDateTime): Game;
-  /** 脱落。最後の生存者は不可。生存者が1人になったら呼び出し側が endPlay する */
+  /** 脱落。最後の生存者は不可（LAST_SURVIVOR）。結果入力待ちでも可。生存者が1人になったら呼び出し側が endPlay する */
   eliminate(game: Game, playerId: PlayerId, now: IsoDateTime): Game;
+  /** 復帰。結果入力待ちでも可 */
   reinstate(game: Game, playerId: PlayerId, now: IsoDateTime): Game;
   /** 「結果入力へ」。最終ハンド or 生存者1人のときのみ可能 */
   endPlay(game: Game, now: IsoDateTime): Game;

@@ -258,7 +258,7 @@ describe("最終ハンドと結果入力", () => {
     expectCode(() => advanceHand(game, NOW), "NO_MORE_HANDS");
   });
 
-  test("最終ハンドで結果入力へ進める。以降は対局の操作ができない", () => {
+  test("最終ハンドで結果入力へ進める。以降はハンドを進められない", () => {
     const finished = endPlay(advance(newGame({ totalHands: 3 }), 2), NOW);
     const state = project(finished);
     expect(state.phase).toBe("ResultPending");
@@ -269,8 +269,6 @@ describe("最終ハンドと結果入力", () => {
       at: NOW,
     });
     expectCode(() => advanceHand(finished, NOW), "NOT_PLAYING");
-    expectCode(() => eliminate(finished, playerId("B"), NOW), "NOT_PLAYING");
-    expectCode(() => reinstate(finished, playerId("B"), NOW), "NOT_PLAYING");
     expectCode(() => endPlay(finished, NOW), "NOT_PLAYING");
   });
 
@@ -291,6 +289,46 @@ describe("最終ハンドと結果入力", () => {
   test("生存者が1人のときは、ハンドを進められない", () => {
     const game = out(newGame(), "B", "C", "D", "E");
     expectCode(() => advanceHand(game, NOW), "NO_MORE_HANDS");
+  });
+});
+
+describe("結果入力待ちでの脱落・復帰", () => {
+  const pending = () => endPlay(advance(newGame({ totalHands: 3 }), 2), NOW);
+
+  test("脱落・復帰を変更でき、結果入力待ちのまま", () => {
+    const eliminated = eliminate(pending(), playerId("B"), NOW);
+    const state = project(eliminated);
+    expect(state.phase).toBe("ResultPending");
+    expect(state.eliminatedPlayerIds).toEqual(["B"]);
+    expect(state.lastEvent).toEqual({
+      type: "PlayerEliminated",
+      playerId: "B",
+      at: NOW,
+    });
+
+    const reinstated = project(reinstate(eliminated, playerId("B"), NOW));
+    expect(reinstated.phase).toBe("ResultPending");
+    expect(reinstated.eliminatedPlayerIds).toEqual([]);
+  });
+
+  test("最後の生存者は、結果入力待ちでも脱落させられない", () => {
+    const game = out(pending(), "B", "C", "D", "E");
+    expect(project(game).activePlayerIds).toEqual(["A"]);
+    expectCode(() => eliminate(game, playerId("A"), NOW), "LAST_SURVIVOR");
+  });
+
+  test("ルール違反（二重脱落・脱落していない人の復帰）は同じくエラー", () => {
+    const game = eliminate(pending(), playerId("B"), NOW);
+    expectCode(() => eliminate(game, playerId("B"), NOW), "ALREADY_ELIMINATED");
+    expectCode(() => reinstate(pending(), playerId("B"), NOW), "NOT_ELIMINATED");
+  });
+
+  test("戻すと、脱落の変更 → 結果入力へ進む操作 の順に取り消される", () => {
+    const base = pending();
+    const changed = eliminate(base, playerId("B"), NOW);
+    expect(project(undo(changed))).toEqual(project(base));
+    expect(project(undo(changed)).phase).toBe("ResultPending");
+    expect(project(undo(undo(changed))).phase).toBe("Playing");
   });
 });
 

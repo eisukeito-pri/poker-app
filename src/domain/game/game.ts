@@ -12,6 +12,10 @@
  * - 親自身が脱落した場合、次の「次のハンドへ」までは脱落した人が親のまま表示される
  *   （SB・BBはその人の次の生存者から決まる）
  * - 生存者が1人のときは、その人がSB・BBを兼ねる（実際には結果入力へ進む）
+ *
+ * 結果入力待ち（PlayEnded後）の扱い：
+ * - ハンドを進める・結果入力へ進む操作はできない
+ * - 脱落・復帰は変更できる（結果入力画面での修正用）。最後の生存者は脱落させられない
  */
 import { handNumber } from "../shared/constructors";
 import { DomainError } from "../shared/errors";
@@ -268,14 +272,13 @@ export function advanceHand(game: Game, now: IsoDateTime): Game {
   return append(game, { type: "HandAdvanced", at: now });
 }
 
-/** 脱落。最後の生存者は脱落させられない */
+/** 脱落。最後の生存者は脱落させられない。結果入力待ちでも可 */
 export function eliminate(
   game: Game,
   playerId: PlayerId,
   now: IsoDateTime,
 ): Game {
   const state = project(game);
-  requirePlaying(state);
   requireSeat(game, playerId);
   if (state.eliminatedPlayerIds.includes(playerId)) {
     throw new DomainError("ALREADY_ELIMINATED", "すでに脱落しています");
@@ -286,13 +289,13 @@ export function eliminate(
   return append(game, { type: "PlayerEliminated", playerId, at: now });
 }
 
+/** 復帰。結果入力待ちでも可 */
 export function reinstate(
   game: Game,
   playerId: PlayerId,
   now: IsoDateTime,
 ): Game {
   const state = project(game);
-  requirePlaying(state);
   requireSeat(game, playerId);
   if (!state.eliminatedPlayerIds.includes(playerId)) {
     throw new DomainError("NOT_ELIMINATED", "脱落していません");

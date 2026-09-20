@@ -3,26 +3,36 @@
  * 入力チェックはここに集めておき、ドメインの他の場所では「作られた値は正しい」とみなす。
  */
 import { DomainError } from "./errors";
+import { MAX_ABS_CHIPS } from "./types";
 import type {
   Chips,
   GameId,
   HandNumber,
   MilliYenPerChip,
   PlayerId,
+  Yen,
 } from "./types";
 
 export const playerId = (value: string): PlayerId => value as PlayerId;
 export const gameId = (value: string): GameId => value as GameId;
 
-/** チップ数。整数のみ（負の値は収支として許可） */
+/** チップ数。整数のみ・絶対値は10億まで（負の値は収支として許可） */
 export function chips(value: number): Chips {
-  if (!Number.isInteger(value)) {
+  if (!Number.isInteger(value) || Math.abs(value) > MAX_ABS_CHIPS) {
     throw new DomainError(
       "INVALID_SETTINGS",
-      `チップは整数で指定してください: ${value}`,
+      `チップは絶対値${MAX_ABS_CHIPS.toLocaleString("en-US")}以下の整数で指定してください: ${value}`,
     );
   }
-  return value as Chips;
+  return (value + 0) as Chips; // -0 を 0 に正規化
+}
+
+/** 金額（円）。整数のみ */
+export function yen(value: number): Yen {
+  if (!Number.isSafeInteger(value)) {
+    throw new DomainError("INVALID_SETTINGS", `金額は整数で指定してください: ${value}`);
+  }
+  return (value + 0) as Yen; // -0 を 0 に正規化
 }
 
 /** ハンド数。1以上の整数 */

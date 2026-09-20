@@ -32,3 +32,6 @@ export type IsoDateTime = string;
 /** 参加人数の上下限 */
 export const MIN_PLAYERS = 2;
 export const MAX_PLAYERS = 10;
+
+/** チップ数（収支を含む）の絶対値の上限：10億 */
+export const MAX_ABS_CHIPS = 1_000_000_000;
