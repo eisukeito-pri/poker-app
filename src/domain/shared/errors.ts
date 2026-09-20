@@ -12,7 +12,14 @@ export type DomainErrorCode =
   | "NOTHING_TO_UNDO"
   | "NOT_RESULT_PENDING" // 結果入力の段階ではない
   | "RESULT_INCOMPLETE" // 結果が全員分そろっていない
-  | "RESULT_INVALID"; // 開始チップ全額を超える負けなど
+  | "RESULT_INVALID" // 開始チップ全額を超える負けなど
+  | "INVALID_PLAYER_NAME" // 名前が空、または長すぎる
+  | "DUPLICATE_PLAYER_NAME" // 同じ名前がすでに名簿にある
+  | "DUPLICATE_RECORD" // 同じ対局の記録がすでにある
+  | "INVALID_BACKUP" // バックアップの形式が不正
+  | "UNSUPPORTED_BACKUP_VERSION" // 新しい（未対応の）バージョンのバックアップ
+  | "STORAGE_FAILED" // 保存・読み込みに失敗（容量超過など）
+  | "STORAGE_CORRUPTED"; // 保存されているデータが壊れている
 
 export class DomainError extends Error {
   readonly code: DomainErrorCode;

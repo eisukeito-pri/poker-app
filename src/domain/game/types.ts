@@ -185,6 +185,21 @@ export interface GameOperations {
 
 /* ───────── リポジトリ ───────── */
 
+/** 前回の対局設定。次回の設定画面の初期値に使う（対局を始めるたびに上書き） */
+export interface LastGameSetup {
+  readonly settings: GameSettings;
+  /**
+   * 参加者と座席順（名簿のID）。
+   * 名簿から削除された人が含まれることがあるので、使うときは名簿にいる人だけに絞る。
+   */
+  readonly seatOrder: readonly PlayerId[];
+}
+
+export interface LastGameSetupRepository {
+  find(): Promise<LastGameSetup | null>;
+  save(setup: LastGameSetup): Promise<void>;
+}
+
 /** 進行中の対局は常に1件だけ保持する */
 export interface GameRepository {
   findCurrent(): Promise<Game | null>;

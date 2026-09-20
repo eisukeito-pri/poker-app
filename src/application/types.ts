@@ -6,6 +6,7 @@ import type { Chips, GameId, IsoDateTime, PlayerId } from "../domain/shared/type
 import type {
   Game,
   GameState,
+  LastGameSetup,
   NewGameInput,
 } from "../domain/game/types";
 import type {
@@ -89,6 +90,7 @@ export interface BackupData {
   readonly records: readonly GameRecord[];
   readonly currentGame: Game | null;
   readonly resultDraft: ResultDraft | null;
+  readonly lastSetup: LastGameSetup | null;
 }
 
 export interface BackupUseCases {
