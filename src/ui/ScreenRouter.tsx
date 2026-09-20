@@ -6,6 +6,7 @@ import type { ReactNode } from "react";
 import { useShell } from "./ShellContext";
 import { HOME_SCREEN } from "./navigation";
 import { HomeScreen } from "./screens/HomeScreen";
+import { SetupScreen } from "./screens/SetupScreen";
 import { PlaceholderScreen } from "./screens/PlaceholderScreen";
 
 export function ScreenRouter(): ReactNode {
@@ -16,7 +17,7 @@ export function ScreenRouter(): ReactNode {
     case "Home":
       return <HomeScreen />;
     case "Setup":
-      return <PlaceholderScreen title="対局の設定" onBack={goHome} />;
+      return <SetupScreen />;
     case "Game":
       // 進行中の対局がある前提の画面なので、戻る先はホーム
       return <PlaceholderScreen title="対局" onBack={goHome} />;

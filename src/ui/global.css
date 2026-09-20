@@ -287,3 +287,155 @@ button,
 .dialog-actions .btn {
   min-width: 100px;
 }
+
+/* ── 設定画面 ───────────────────────────── */
+
+.loading-text {
+  color: var(--color-text-muted);
+  text-align: center;
+  margin-top: 40px;
+}
+
+.setup-section {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: var(--gutter);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.setup-section-title {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--color-text-muted);
+}
+
+.player-select-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.player-select-item {
+  min-height: 44px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-size: 0.95rem;
+}
+
+.player-select-item.is-selected {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--color-primary-text);
+}
+
+.add-player-row {
+  display: flex;
+  gap: 8px;
+}
+
+.add-player-row .field-input {
+  flex: 1;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.field-label {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
+.field-input-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.field-input {
+  min-height: 44px;
+  padding: 8px 12px;
+  border-radius: var(--radius);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-size: 1rem;
+  width: 100%;
+}
+
+.field-suffix {
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+.seat-order-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.seat-order-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 4px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.seat-order-item:last-child {
+  border-bottom: none;
+}
+
+.seat-order-number {
+  width: 24px;
+  text-align: center;
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+}
+
+.seat-order-name {
+  flex: 1;
+  font-size: 1rem;
+}
+
+.seat-order-controls {
+  display: flex;
+  gap: 4px;
+}
+
+.dealer-select-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.dealer-select-item {
+  min-height: 44px;
+  padding: 8px 16px;
+  border-radius: var(--radius);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-size: 0.95rem;
+}
+
+.dealer-select-item.is-selected {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: #1a1a1a;
+}
