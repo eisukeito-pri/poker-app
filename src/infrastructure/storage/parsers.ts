@@ -21,7 +21,7 @@ import type {
   LastGameSetup,
 } from "../../domain/game/types";
 import { normalizePlayerName } from "../../domain/roster/roster";
-import type { GameRecord, Player } from "../../domain/roster/types";
+import type { GameRecord, Player, PlayerYenBalance, SettlementRecord } from "../../domain/roster/types";
 import { DomainError } from "../../domain/shared/errors";
 import { MAX_ABS_CHIPS } from "../../domain/shared/types";
 import type {
@@ -30,6 +30,7 @@ import type {
   IsoDateTime,
   MilliYenPerChip,
   PlayerId,
+  SettlementId,
   Yen,
 } from "../../domain/shared/types";
 import type { PlayerResult, ResultDraft, Transfer } from "../../domain/settlement/types";
@@ -97,6 +98,12 @@ function asIso(value: unknown, path: string): IsoDateTime {
   const text = asString(value, path);
   if (Number.isNaN(Date.parse(text))) throw new SchemaError(path, "日時ではありません");
   return text;
+}
+
+/** 未精算（null）または、古いデータで項目自体がない場合は null として扱う（後方互換） */
+function asIsoOrNull(value: unknown, path: string): IsoDateTime | null {
+  if (value === null || value === undefined) return null;
+  return asIso(value, path);
 }
 
 function asId<T extends string>(value: unknown, path: string): T {
@@ -383,12 +390,67 @@ export function parseGameRecord(value: unknown, path = "record"): GameRecord {
     }
   }
 
-  return { gameId, playedAt, settings, players, handsPlayed, results, transfers };
+  const settledAt = asIsoOrNull(o.settledAt, `${path}.settledAt`);
+
+  return { gameId, playedAt, settings, players, handsPlayed, results, transfers, settledAt };
 }
 
 export function parseGameRecords(value: unknown, path = "records"): GameRecord[] {
   const records = mapArray(value, path, parseGameRecord);
   assertUnique(records.map((r) => r.gameId), path, "対局ID");
+  return records;
+}
+
+/* ───────── 精算（複数対局のまとめ払い） ───────── */
+
+function parsePlayerYenBalance(value: unknown, path: string): PlayerYenBalance {
+  const o = asObject(value, path);
+  return {
+    playerId: asId<PlayerId>(o.playerId, `${path}.playerId`),
+    name: asNonEmptyString(o.name, `${path}.name`),
+    netYen: (asInt(o.netYen, `${path}.netYen`) + 0) as Yen,
+  };
+}
+
+export function parseSettlementRecord(value: unknown, path = "settlement"): SettlementRecord {
+  const o = asObject(value, path);
+  const id = asId<SettlementId>(o.id, `${path}.id`);
+  const settledAt = asIso(o.settledAt, `${path}.settledAt`);
+
+  const gameIds = mapArray(o.gameIds, `${path}.gameIds`, (item, itemPath) =>
+    asId<GameId>(item, itemPath),
+  );
+  if (gameIds.length === 0) throw new SchemaError(`${path}.gameIds`, "対局が含まれていません");
+  assertUnique(gameIds, `${path}.gameIds`, "対局ID");
+
+  const balances = mapArray(o.balances, `${path}.balances`, parsePlayerYenBalance);
+  assertUnique(balances.map((b) => b.playerId), `${path}.balances`, "参加者");
+  if (balances.reduce<number>((sum, b) => sum + b.netYen, 0) !== 0) {
+    throw new SchemaError(`${path}.balances`, "円の収支の合計が0ではありません");
+  }
+
+  const transfers = mapArray(o.transfers, `${path}.transfers`, parseTransfer);
+  const playerIds = new Set<string>(balances.map((b) => b.playerId));
+  const effect = new Map<string, number>(balances.map((b) => [b.playerId, 0]));
+  transfers.forEach((t, i) => {
+    if (!playerIds.has(t.from) || !playerIds.has(t.to) || t.from === t.to) {
+      throw new SchemaError(`${path}.transfers[${i}]`, "送金の相手が不正です");
+    }
+    effect.set(t.to, (effect.get(t.to) ?? 0) + t.amount);
+    effect.set(t.from, (effect.get(t.from) ?? 0) - t.amount);
+  });
+  for (const balance of balances) {
+    if ((effect.get(balance.playerId) ?? 0) !== balance.netYen) {
+      throw new SchemaError(`${path}.transfers`, "送金が収支と合っていません");
+    }
+  }
+
+  return { id, settledAt, gameIds, balances, transfers };
+}
+
+export function parseSettlementRecords(value: unknown, path = "settlements"): SettlementRecord[] {
+  const records = mapArray(value, path, parseSettlementRecord);
+  assertUnique(records.map((r) => r.id), path, "精算ID");
   return records;
 }
 
@@ -411,6 +473,9 @@ export function parseBackupData(value: unknown): BackupData {
 
   const players = parsePlayers(o.players, `${path}.players`);
   const records = parseGameRecords(o.records, `${path}.records`);
+  // 古いバックアップ（この項目自体がない）は、まだ精算機能がなかったので空扱い
+  const settlements =
+    o.settlements === undefined ? [] : parseSettlementRecords(o.settlements, `${path}.settlements`);
   const currentGame = o.currentGame === null ? null : parseGame(o.currentGame, `${path}.currentGame`);
   const resultDraft =
     o.resultDraft === null ? null : parseResultDraft(o.resultDraft, `${path}.resultDraft`);
@@ -432,6 +497,7 @@ export function parseBackupData(value: unknown): BackupData {
     exportedAt: asIso(o.exportedAt, `${path}.exportedAt`),
     players,
     records,
+    settlements,
     currentGame,
     resultDraft,
     lastSetup,

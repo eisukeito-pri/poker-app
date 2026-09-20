@@ -29,6 +29,8 @@ const MESSAGES: Record<DomainErrorCode, string> = {
   GAME_IN_PROGRESS: "進行中の対局があります。",
   NO_CURRENT_GAME: "進行中の対局がありません。",
   RECORD_NOT_FOUND: "記録が見つかりません。",
+  NO_PENDING_SETTLEMENT: "未精算の対局がありません。",
+  SETTLEMENT_NOT_FOUND: "精算の記録が見つかりません。",
 };
 
 /** 画面に出すためのメッセージ。DomainError以外は汎用の文言にする */

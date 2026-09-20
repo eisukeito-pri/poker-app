@@ -6,14 +6,28 @@ import type {
   GameRecordRepository,
   PlayerRepository,
   PlayerStats,
+  SettlementRecord,
+  SettlementRecordRepository,
 } from "../domain/roster/types";
-import { gameId } from "../domain/shared/constructors";
+import { gameId, settlementId } from "../domain/shared/constructors";
 import { DomainError } from "../domain/shared/errors";
 import type { HistoryUseCases } from "./types";
 
 export interface HistoryUseCasesDeps {
   readonly gameRecordRepo: GameRecordRepository;
   readonly playerRepo: PlayerRepository;
+  readonly settlementRecordRepo: SettlementRecordRepository;
+}
+
+/** 新しい順に並べる（同時刻ならidの降順で、結果が毎回同じになるようにする） */
+function sortSettlementsNewestFirst(
+  records: readonly SettlementRecord[],
+): SettlementRecord[] {
+  return [...records].sort((a, b) => {
+    const byTime = Date.parse(b.settledAt) - Date.parse(a.settledAt);
+    if (byTime !== 0) return byTime;
+    return a.id < b.id ? 1 : a.id > b.id ? -1 : 0;
+  });
 }
 
 export class HistoryUseCasesImpl implements HistoryUseCases {
@@ -49,5 +63,17 @@ export class HistoryUseCasesImpl implements HistoryUseCases {
       this.deps.playerRepo.findAll(),
     ]);
     return aggregateStats(records, roster);
+  }
+
+  async listSettlements(): Promise<readonly SettlementRecord[]> {
+    return sortSettlementsNewestFirst(await this.deps.settlementRecordRepo.findAll());
+  }
+
+  async getSettlement(id: string): Promise<SettlementRecord> {
+    const record = await this.deps.settlementRecordRepo.find(settlementId(id));
+    if (!record) {
+      throw new DomainError("SETTLEMENT_NOT_FOUND", `精算記録が見つかりません: ${id}`);
+    }
+    return record;
   }
 }

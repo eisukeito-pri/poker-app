@@ -5,11 +5,22 @@
  * 現在の対局の状態（脱落者など）と、保存されている入力途中の値から、
  * 毎回 resultSheetOperations で作り直す。脱落状態が変わって「種類」が
  * 変わった人の値は、ResultSheet 側のロジックで自動的に捨てられる。
+ *
+ * お金のやりとりは対局ごとには行わない。recordGame() は対局の結果を
+ * 未精算（settledAt: null）のまま履歴に保存するだけで、「次の対局へ」
+ * 「精算して支払いへ」のどちらでも呼ばれる。実際にお金を動かす単位は
+ * settleUp()（未精算の対局をまとめて1回の精算にする）。
  */
 import { project } from "../domain/game/game";
 import type { Game, GameRepository } from "../domain/game/types";
-import { createGameRecord } from "../domain/roster/record";
-import type { GameRecord, GameRecordRepository } from "../domain/roster/types";
+import { pendingRecordsOf, aggregatePendingSettlement } from "../domain/roster/pending-settlement";
+import { createGameRecord, sortRecordsNewestFirst } from "../domain/roster/record";
+import type {
+  GameRecord,
+  GameRecordRepository,
+  SettlementRecord,
+  SettlementRecordRepository,
+} from "../domain/roster/types";
 import { chips } from "../domain/shared/constructors";
 import { DomainError } from "../domain/shared/errors";
 import type { PlayerId } from "../domain/shared/types";
@@ -21,13 +32,16 @@ import type {
   ResultSheet,
   Settlement,
 } from "../domain/settlement/types";
-import type { SettlementUseCases } from "./types";
+import type { Clock, IdGenerator, PendingSettlementView, SettlementUseCases } from "./types";
 import { playerId as toPlayerId } from "../domain/shared/constructors";
 
 export interface SettlementUseCasesDeps {
   readonly gameRepo: GameRepository;
   readonly resultDraftRepo: ResultDraftRepository;
   readonly gameRecordRepo: GameRecordRepository;
+  readonly settlementRecordRepo: SettlementRecordRepository;
+  readonly clock: Clock;
+  readonly idGenerator: IdGenerator;
 }
 
 export class SettlementUseCasesImpl implements SettlementUseCases {
@@ -92,12 +106,6 @@ export class SettlementUseCasesImpl implements SettlementUseCases {
     return updated;
   }
 
-  async previewSettlement(): Promise<Settlement> {
-    const game = await this.requireResultPendingGame();
-    const sheet = await this.buildSheet(game);
-    return this.settlementFromSheet(game, sheet);
-  }
-
   private settlementFromSheet(game: Game, sheet: ResultSheet): Settlement {
     if (!sheet.isComplete) {
       throw new DomainError("RESULT_INCOMPLETE", "まだ入力が終わっていない人がいます");
@@ -117,7 +125,7 @@ export class SettlementUseCasesImpl implements SettlementUseCases {
     return calculateSettlement(netChipsList, game.settings.exchangeRate);
   }
 
-  async finalizeGame(): Promise<GameRecord> {
+  async recordGame(): Promise<GameRecord> {
     const game = await this.requireResultPendingGame();
     const sheet = await this.buildSheet(game);
     const settlement = this.settlementFromSheet(game, sheet);
@@ -134,5 +142,39 @@ export class SettlementUseCasesImpl implements SettlementUseCases {
     await this.deps.gameRepo.clearCurrent();
     await this.deps.resultDraftRepo.clear(game.id);
     return record;
+  }
+
+  async getPendingSettlement(): Promise<PendingSettlementView> {
+    const allRecords = await this.deps.gameRecordRepo.findAll();
+    const pending = pendingRecordsOf(allRecords);
+    const { balances, transfers } = aggregatePendingSettlement(pending);
+    return {
+      pendingGames: sortRecordsNewestFirst(pending),
+      balances,
+      transfers,
+    };
+  }
+
+  async settleUp(): Promise<SettlementRecord> {
+    const allRecords = await this.deps.gameRecordRepo.findAll();
+    const pending = pendingRecordsOf(allRecords);
+    if (pending.length === 0) {
+      throw new DomainError("NO_PENDING_SETTLEMENT", "未精算の対局がありません");
+    }
+    const { balances, transfers } = aggregatePendingSettlement(pending);
+    const settledAt = this.deps.clock.now();
+    const gameIds = sortRecordsNewestFirst(pending).map((r) => r.gameId);
+
+    const settlementRecord: SettlementRecord = {
+      id: this.deps.idGenerator.newSettlementId(),
+      settledAt,
+      gameIds,
+      balances,
+      transfers,
+    };
+
+    await this.deps.settlementRecordRepo.add(settlementRecord);
+    await this.deps.gameRecordRepo.markSettled(gameIds, settledAt);
+    return settlementRecord;
   }
 }

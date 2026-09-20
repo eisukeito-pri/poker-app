@@ -76,7 +76,12 @@ export function HistoryDetailScreen(props: HistoryDetailScreenProps): ReactNode 
 
       <p className="section-hint">
         {formatPlayedAt(record.playedAt)}・{record.handsPlayed}ハンド・
-        {record.players.length}人
+        {record.players.length}人・
+        {record.settledAt === null ? (
+          <span className="badge badge-pending">未精算</span>
+        ) : (
+          `精算済み（${formatPlayedAt(record.settledAt)}）`
+        )}
       </p>
 
       <section className="setup-section">
@@ -103,7 +108,9 @@ export function HistoryDetailScreen(props: HistoryDetailScreenProps): ReactNode 
       </section>
 
       <section className="setup-section">
-        <h2 className="setup-section-title">受け渡し（最小回数）</h2>
+        <h2 className="setup-section-title">
+          受け渡し（この対局単体の参考値。実際の支払いは精算の記録を参照）
+        </h2>
         {record.transfers.length === 0 ? (
           <p className="section-hint">受け渡しはありません。</p>
         ) : (

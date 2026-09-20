@@ -3,14 +3,17 @@ import type { BackupData } from "../../application/types";
 import { advanceHand, create, endPlay } from "../../domain/game/game";
 import type { Game, GameSettings } from "../../domain/game/types";
 import { createGameRecord } from "../../domain/roster/record";
-import type { GameRecord, Player } from "../../domain/roster/types";
+import type { GameRecord, Player, SettlementRecord } from "../../domain/roster/types";
 import {
   chips,
   exchangeRateFromYen,
   gameId,
   playerId,
+  settlementId,
+  yen,
 } from "../../domain/shared/constructors";
 import { calculateSettlement } from "../../domain/settlement/settlement";
+import { minimizeTransfers } from "../../domain/settlement/transfers";
 
 export const T0 = "2026-09-20T10:00:00.000Z";
 export const T1 = "2026-09-20T12:00:00.000Z";
@@ -66,6 +69,21 @@ export function sampleRecord(id = "g1", createdAt = T0): GameRecord {
   return createGameRecord({ game: finishedGame(id, createdAt), settlement });
 }
 
+export function sampleSettlementRecord(id = "s1", settledAt = T1): SettlementRecord {
+  const balances = [
+    { playerId: playerId("A"), name: "Alice", netYen: yen(100) },
+    { playerId: playerId("B"), name: "Bob", netYen: yen(-40) },
+    { playerId: playerId("C"), name: "Carol", netYen: yen(-60) },
+  ];
+  return {
+    id: settlementId(id),
+    settledAt,
+    gameIds: [gameId("g1")],
+    balances,
+    transfers: minimizeTransfers(balances),
+  };
+}
+
 export function sampleBackup(exportedAt = "2026-09-21T00:00:00.000Z"): BackupData {
   const current = advanceHand(newGameFixture("g-current", "2026-09-21T09:00:00.000Z"), T1);
   return {
@@ -73,6 +91,7 @@ export function sampleBackup(exportedAt = "2026-09-21T00:00:00.000Z"): BackupDat
     exportedAt,
     players: samplePlayers(),
     records: [sampleRecord("g1", T0), sampleRecord("g2", T1)],
+    settlements: [sampleSettlementRecord()],
     currentGame: current,
     resultDraft: {
       gameId: current.id,

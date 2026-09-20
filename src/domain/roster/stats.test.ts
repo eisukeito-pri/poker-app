@@ -24,6 +24,7 @@ function record(id: string, playedAt: string, rows: [string, string, number][]):
       netYen: yen(net),
     })),
     transfers: [],
+    settledAt: null,
   };
 }
 

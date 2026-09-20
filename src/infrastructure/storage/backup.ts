@@ -23,6 +23,7 @@ import {
   parseLastSetup,
   parsePlayers,
   parseResultDraft,
+  parseSettlementRecords,
 } from "./parsers";
 
 export function serializeBackup(data: BackupData): string {
@@ -74,6 +75,7 @@ export class AppDataStore {
     const read = (key: string) => readStored(this.store, key);
     const players = read(STORAGE_KEYS.players);
     const records = read(STORAGE_KEYS.records);
+    const settlements = read(STORAGE_KEYS.settlements);
     const currentGame = read(STORAGE_KEYS.currentGame);
     const resultDraft = read(STORAGE_KEYS.resultDraft);
     const lastSetup = read(STORAGE_KEYS.lastSetup);
@@ -86,6 +88,7 @@ export class AppDataStore {
         exportedAt: now,
         players: players === undefined ? [] : parsePlayers(players),
         records: records === undefined ? [] : parseGameRecords(records),
+        settlements: settlements === undefined ? [] : parseSettlementRecords(settlements),
         currentGame: game,
         // 別の対局の入力途中データは含めない
         resultDraft: draft && game && draft.gameId === game.id ? draft : null,
@@ -114,6 +117,7 @@ export class AppDataStore {
     const next: [string, string | null][] = [
       [STORAGE_KEYS.players, serializeStored(valid.players)],
       [STORAGE_KEYS.records, serializeStored(valid.records)],
+      [STORAGE_KEYS.settlements, serializeStored(valid.settlements)],
       [STORAGE_KEYS.currentGame, valid.currentGame ? serializeStored(valid.currentGame) : null],
       [STORAGE_KEYS.resultDraft, valid.resultDraft ? serializeStored(valid.resultDraft) : null],
       [STORAGE_KEYS.lastSetup, valid.lastSetup ? serializeStored(valid.lastSetup) : null],

@@ -1,7 +1,7 @@
 /** テスト専用の偽物（Clock・ID生成・乱数）。アプリ本体からは import しない */
 import type { Clock, IdGenerator, RandomSource } from "./types";
-import { gameId, playerId } from "../domain/shared/constructors";
-import type { GameId, IsoDateTime, PlayerId } from "../domain/shared/types";
+import { gameId, playerId, settlementId } from "../domain/shared/constructors";
+import type { GameId, IsoDateTime, PlayerId, SettlementId } from "../domain/shared/types";
 
 export class FixedClock implements Clock {
   private current: IsoDateTime;
@@ -23,6 +23,7 @@ export class FixedClock implements Clock {
 export class SequentialIdGenerator implements IdGenerator {
   private playerCount = 0;
   private gameCount = 0;
+  private settlementCount = 0;
 
   newPlayerId(): PlayerId {
     this.playerCount += 1;
@@ -32,6 +33,11 @@ export class SequentialIdGenerator implements IdGenerator {
   newGameId(): GameId {
     this.gameCount += 1;
     return gameId(`game-${this.gameCount}`);
+  }
+
+  newSettlementId(): SettlementId {
+    this.settlementCount += 1;
+    return settlementId(`settlement-${this.settlementCount}`);
   }
 }
 

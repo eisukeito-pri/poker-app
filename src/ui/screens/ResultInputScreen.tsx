@@ -174,6 +174,31 @@ export function ResultInputScreen(): ReactNode {
     }
   }
 
+  async function handleNextGame() {
+    setBusy(true);
+    try {
+      await services.settlement.recordGame();
+      notify("この対局の結果を保存しました。");
+      navigate({ name: "Setup" }, { replace: true });
+    } catch (error) {
+      notifyError(error);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleSettleUp() {
+    setBusy(true);
+    try {
+      await services.settlement.recordGame();
+      navigate({ name: "Settlement" }, { replace: true });
+    } catch (error) {
+      notifyError(error);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div className="screen screen-result-input">
       <ScreenHeader
@@ -262,13 +287,11 @@ export function ResultInputScreen(): ReactNode {
         })}
       </ul>
 
-      <Button
-        variant="primary"
-        fullWidth
-        disabled={busy || !sheet.canSettle}
-        onClick={() => navigate({ name: "Settlement" })}
-      >
-        精算へ進む
+      <Button variant="primary" fullWidth disabled={busy || !sheet.canSettle} onClick={handleNextGame}>
+        次の対局へ
+      </Button>
+      <Button variant="secondary" fullWidth disabled={busy || !sheet.canSettle} onClick={handleSettleUp}>
+        精算して支払いへ
       </Button>
       <Button variant="ghost" fullWidth disabled={busy} onClick={handleUndo}>
         元に戻す（対局に戻る）

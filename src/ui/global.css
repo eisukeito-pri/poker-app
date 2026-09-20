@@ -205,6 +205,10 @@ button,
   font-size: 0.9rem;
 }
 
+.banner .btn {
+  margin-top: 10px;
+}
+
 .placeholder-text {
   color: var(--color-text-muted);
   text-align: center;
@@ -564,6 +568,13 @@ button,
   background: var(--color-accent);
   color: #1a1a1a;
   border: 2px solid var(--color-accent);
+}
+
+/* 未精算バッジ（履歴一覧・記録詳細） */
+.badge-pending {
+  margin-left: 6px;
+  background: var(--color-danger);
+  color: var(--color-danger-text);
 }
 
 .game-player-actions {

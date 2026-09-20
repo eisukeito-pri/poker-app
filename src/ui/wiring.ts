@@ -34,6 +34,7 @@ import {
   StorageLastGameSetupRepository,
   StoragePlayerRepository,
   StorageResultDraftRepository,
+  StorageSettlementRecordRepository,
 } from "../infrastructure/storage/repositories";
 import { systemClock } from "../infrastructure/system/clock";
 import { systemIdGenerator } from "../infrastructure/system/id-generator";
@@ -69,6 +70,7 @@ export function createAppServices(): AppServices {
   const playerRepo = new StoragePlayerRepository(store);
   const resultDraftRepo = new StorageResultDraftRepository(store);
   const gameRecordRepo = new StorageGameRecordRepository(store);
+  const settlementRecordRepo = new StorageSettlementRecordRepository(store);
 
   const game = new GameUseCasesImpl({
     gameRepo,
@@ -79,13 +81,20 @@ export function createAppServices(): AppServices {
     idGen: systemIdGenerator,
     random: systemRandomSource,
   });
-  const settlement = new SettlementUseCasesImpl({ gameRepo, resultDraftRepo, gameRecordRepo });
+  const settlement = new SettlementUseCasesImpl({
+    gameRepo,
+    resultDraftRepo,
+    gameRecordRepo,
+    settlementRecordRepo,
+    clock: systemClock,
+    idGenerator: systemIdGenerator,
+  });
   const roster = new RosterUseCasesImpl({
     playerRepo,
     clock: systemClock,
     idGen: systemIdGenerator,
   });
-  const history = new HistoryUseCasesImpl({ gameRecordRepo, playerRepo });
+  const history = new HistoryUseCasesImpl({ gameRecordRepo, playerRepo, settlementRecordRepo });
   const backup = new BackupUseCasesImpl({
     storage: new AppDataStore(store),
     codec: { serialize: serializeBackup, parse: parseBackup, fileName: backupFileName },

@@ -49,6 +49,7 @@ export function createGameRecord(input: {
     handsPlayed: state.handNumber,
     results,
     transfers: settlement.transfers,
+    settledAt: null,
   };
 }
 

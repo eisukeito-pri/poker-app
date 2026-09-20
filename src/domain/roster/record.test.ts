@@ -110,6 +110,7 @@ describe("sortRecordsNewestFirst", () => {
     handsPlayed: 1,
     results: [],
     transfers: [],
+    settledAt: null,
   });
 
   test("新しい順。同時刻ならgameIdの降順。元の配列は変更しない", () => {

@@ -10,11 +10,13 @@ import type {
   HandNumber,
   MilliYenPerChip,
   PlayerId,
+  SettlementId,
   Yen,
 } from "./types";
 
 export const playerId = (value: string): PlayerId => value as PlayerId;
 export const gameId = (value: string): GameId => value as GameId;
+export const settlementId = (value: string): SettlementId => value as SettlementId;
 
 /** チップ数。整数のみ・絶対値は10億まで（負の値は収支として許可） */
 export function chips(value: number): Chips {

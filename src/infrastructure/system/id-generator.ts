@@ -2,8 +2,8 @@
  * ID生成。crypto.randomUUID() を使い、使えない環境ではフォールバックする。
  */
 import type { IdGenerator } from "../../application/types";
-import { gameId, playerId } from "../../domain/shared/constructors";
-import type { GameId, PlayerId } from "../../domain/shared/types";
+import { gameId, playerId, settlementId } from "../../domain/shared/constructors";
+import type { GameId, PlayerId, SettlementId } from "../../domain/shared/types";
 
 function randomUuid(): string {
   const cryptoObj = globalThis.crypto as Crypto | undefined;
@@ -29,5 +29,8 @@ export const systemIdGenerator: IdGenerator = {
   },
   newGameId(): GameId {
     return gameId(randomUuid());
+  },
+  newSettlementId(): SettlementId {
+    return settlementId(randomUuid());
   },
 };

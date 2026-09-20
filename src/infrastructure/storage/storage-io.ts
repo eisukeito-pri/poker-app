@@ -9,6 +9,7 @@ import { CURRENT_SCHEMA_VERSION, SchemaError } from "./parsers";
 export const STORAGE_KEYS = {
   players: "poker.players",
   records: "poker.records",
+  settlements: "poker.settlements",
   currentGame: "poker.currentGame",
   resultDraft: "poker.resultDraft",
   lastSetup: "poker.lastSetup",

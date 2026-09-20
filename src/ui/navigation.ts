@@ -11,6 +11,7 @@ export type Screen =
   | { readonly name: "Settlement" }
   | { readonly name: "History" }
   | { readonly name: "HistoryDetail"; readonly gameId: string }
+  | { readonly name: "SettlementDetail"; readonly settlementId: string }
   | { readonly name: "Stats" }
   | { readonly name: "Roster" }
   | { readonly name: "Backup" };
@@ -21,6 +22,9 @@ export function screensEqual(a: Screen, b: Screen): boolean {
   if (a.name !== b.name) return false;
   if (a.name === "HistoryDetail" && b.name === "HistoryDetail") {
     return a.gameId === b.gameId;
+  }
+  if (a.name === "SettlementDetail" && b.name === "SettlementDetail") {
+    return a.settlementId === b.settlementId;
   }
   return true;
 }
@@ -39,6 +43,7 @@ export function isScreen(value: unknown): value is Screen {
       "Settlement",
       "History",
       "HistoryDetail",
+      "SettlementDetail",
       "Stats",
       "Roster",
       "Backup",

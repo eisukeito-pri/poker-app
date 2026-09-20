@@ -6,14 +6,16 @@
  * ルール違反は DomainError（codeで表示を切り替える）。
  */
 import type { Game, GameState, LastGameSetup } from "../domain/game/types";
-import type { GameRecord, Player, PlayerStats } from "../domain/roster/types";
-import type { IsoDateTime, PlayerId } from "../domain/shared/types";
-import type { GameId } from "../domain/shared/types";
 import type {
-  ResultDraft,
-  ResultSheet,
-  Settlement,
-} from "../domain/settlement/types";
+  GameRecord,
+  Player,
+  PlayerStats,
+  PlayerYenBalance,
+  SettlementRecord,
+} from "../domain/roster/types";
+import type { IsoDateTime, PlayerId, SettlementId } from "../domain/shared/types";
+import type { GameId } from "../domain/shared/types";
+import type { ResultDraft, ResultSheet, Transfer } from "../domain/settlement/types";
 
 /* ───────── ポート（テストで差し替えられるようにする） ───────── */
 
@@ -24,6 +26,7 @@ export interface Clock {
 export interface IdGenerator {
   newPlayerId(): PlayerId;
   newGameId(): GameId;
+  newSettlementId(): SettlementId;
 }
 
 export interface RandomSource {
@@ -92,18 +95,37 @@ export interface GameUseCases {
 
 /* ───────── 結果入力・精算 ───────── */
 
+/**
+ * 未精算（まだお金のやりとりをしていない）対局をまとめた、精算前のプレビュー。
+ * 未精算の対局が1件もなければ pendingGames は空配列（エラーにはしない）。
+ */
+export interface PendingSettlementView {
+  /** 対象になっている対局（新しい順） */
+  readonly pendingGames: readonly GameRecord[];
+  /** 合算収支（収支の大きい順） */
+  readonly balances: readonly PlayerYenBalance[];
+  /** 最小回数の送金リスト */
+  readonly transfers: readonly Transfer[];
+}
+
 export interface SettlementUseCases {
   /** 結果入力待ちの対局のシート。それ以外は NOT_RESULT_PENDING */
   getResultSheet(): Promise<ResultSheet>;
   /** 生存者の±を入力（nullで消去）。入力途中のデータとして自動保存される */
   enterResult(playerId: string, netChips: number | null): Promise<ResultSheet>;
-  /** 精算結果の計算のみ（保存しない）。入力が未完成・範囲外なら RESULT_INCOMPLETE / RESULT_INVALID */
-  previewSettlement(): Promise<Settlement>;
   /**
-   * 「保存して完了」：記録を履歴に保存し、進行中の対局と入力途中のデータを消す。
-   * 途中で失敗して押し直しても、記録が二重にならない。
+   * この対局の結果を履歴に保存する（未精算のまま）。進行中の対局と入力途中の
+   * データを消す。途中で失敗して押し直しても、記録が二重にならない。
+   * 「次の対局へ」「精算して支払いへ」のどちらでも、まずこれを呼ぶ。
    */
-  finalizeGame(): Promise<GameRecord>;
+  recordGame(): Promise<GameRecord>;
+  /** 未精算の対局をまとめたプレビュー（何件あっても・0件でもエラーにしない） */
+  getPendingSettlement(): Promise<PendingSettlementView>;
+  /**
+   * 「精算して支払いへ」：未精算の対局をすべて精算済みにし、まとめの精算記録を作る。
+   * 未精算の対局が1件もなければ NO_PENDING_SETTLEMENT。
+   */
+  settleUp(): Promise<SettlementRecord>;
 }
 
 /* ───────── 名簿・履歴・成績 ───────── */
@@ -127,6 +149,10 @@ export interface HistoryUseCases {
   /** なければ RECORD_NOT_FOUND */
   deleteRecord(gameId: string): Promise<void>;
   getPlayerStats(): Promise<readonly PlayerStats[]>;
+  /** 新しい順 */
+  listSettlements(): Promise<readonly SettlementRecord[]>;
+  /** なければ SETTLEMENT_NOT_FOUND */
+  getSettlement(id: string): Promise<SettlementRecord>;
 }
 
 /* ───────── バックアップ ───────── */
@@ -136,6 +162,7 @@ export interface BackupData {
   readonly exportedAt: IsoDateTime;
   readonly players: readonly Player[];
   readonly records: readonly GameRecord[];
+  readonly settlements: readonly SettlementRecord[];
   readonly currentGame: Game | null;
   readonly resultDraft: ResultDraft | null;
   readonly lastSetup: LastGameSetup | null;

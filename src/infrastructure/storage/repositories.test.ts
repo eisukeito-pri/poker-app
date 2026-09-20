@@ -8,6 +8,7 @@ import {
   StorageLastGameSetupRepository,
   StoragePlayerRepository,
   StorageResultDraftRepository,
+  StorageSettlementRecordRepository,
 } from "./repositories";
 import { STORAGE_KEYS } from "./storage-io";
 import {
@@ -16,9 +17,11 @@ import {
   sampleBackup,
   samplePlayers,
   sampleRecord,
+  sampleSettlementRecord,
   T0,
   T1,
 } from "./test-fixtures";
+import { settlementId } from "../../domain/shared/constructors";
 
 describe("StoragePlayerRepository", () => {
   test("未保存なら空。保存した順に並び、同じIDは置き換える", async () => {
@@ -104,6 +107,44 @@ describe("StorageGameRecordRepository", () => {
     const broken = { ...sampleRecord("g2", T1), handsPlayed: 99 };
     await expectRejects(() => repo.add(broken), "STORAGE_FAILED");
     expect((await repo.findAll()).map((r) => r.gameId)).toEqual(["g1"]);
+  });
+
+  test("markSettled：指定したIDだけ settledAt を設定する。存在しないIDは無視する", async () => {
+    const repo = new StorageGameRecordRepository(new MemoryKeyValueStore());
+    await repo.add(sampleRecord("g1", T0));
+    await repo.add(sampleRecord("g2", T1));
+    expect((await repo.findAll()).every((r) => r.settledAt === null)).toBe(true);
+
+    await repo.markSettled([gameId("g1"), gameId("zz")], "2026-09-20T12:00:00.000Z");
+    const records = await repo.findAll();
+    expect(records.find((r) => r.gameId === "g1")?.settledAt).toBe("2026-09-20T12:00:00.000Z");
+    expect(records.find((r) => r.gameId === "g2")?.settledAt).toBeNull();
+  });
+});
+
+describe("StorageSettlementRecordRepository", () => {
+  test("新しい順ではなく、追加順に返す。findで1件だけ取れる", async () => {
+    const repo = new StorageSettlementRecordRepository(new MemoryKeyValueStore());
+    expect(await repo.findAll()).toEqual([]);
+    await repo.add(sampleSettlementRecord("s1", T0));
+    await repo.add(sampleSettlementRecord("s2", T1));
+    expect((await repo.findAll()).map((r) => r.id)).toEqual(["s1", "s2"]);
+    expect((await repo.find(settlementId("s1")))?.id).toBe("s1");
+    expect(await repo.find(settlementId("zz"))).toBeNull();
+  });
+
+  test("同じIDの精算記録は追加できない", async () => {
+    const repo = new StorageSettlementRecordRepository(new MemoryKeyValueStore());
+    await repo.add(sampleSettlementRecord("s1", T0));
+    await expectRejects(() => repo.add(sampleSettlementRecord("s1", T1)), "DUPLICATE_RECORD");
+  });
+
+  test("内容が不正な精算記録は保存しない（STORAGE_FAILED）", async () => {
+    const store = new MemoryKeyValueStore();
+    const repo = new StorageSettlementRecordRepository(store);
+    const broken = { ...sampleSettlementRecord("s1", T0), gameIds: [] };
+    await expectRejects(() => repo.add(broken), "STORAGE_FAILED");
+    expect(await repo.findAll()).toEqual([]);
   });
 });
 

@@ -9,6 +9,7 @@ export type Brand<T, B extends string> = T & { readonly [brand]: B };
 
 export type PlayerId = Brand<string, "PlayerId">;
 export type GameId = Brand<string, "GameId">;
+export type SettlementId = Brand<string, "SettlementId">;
 
 /** チップ数（整数）。収支を表すときは負の値もとる */
 export type Chips = Brand<number, "Chips">;

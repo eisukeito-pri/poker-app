@@ -17,9 +17,11 @@ import type {
   GameRecordRepository,
   Player,
   PlayerRepository,
+  SettlementRecord,
+  SettlementRecordRepository,
 } from "../../domain/roster/types";
 import { DomainError } from "../../domain/shared/errors";
-import type { GameId, PlayerId } from "../../domain/shared/types";
+import type { GameId, PlayerId, SettlementId } from "../../domain/shared/types";
 import type { ResultDraft, ResultDraftRepository } from "../../domain/settlement/types";
 import type { KeyValueStore } from "./key-value-store";
 import {
@@ -29,6 +31,8 @@ import {
   parseLastSetup,
   parsePlayers,
   parseResultDraft,
+  parseSettlementRecord,
+  parseSettlementRecords,
 } from "./parsers";
 import {
   parseStored,
@@ -100,6 +104,48 @@ export class StorageGameRecordRepository implements GameRecordRepository {
   async remove(gameId: GameId): Promise<void> {
     const records = this.load();
     writeStored(this.store, STORAGE_KEYS.records, records.filter((r) => r.gameId !== gameId));
+  }
+
+  async markSettled(gameIds: readonly GameId[], settledAt: string): Promise<void> {
+    const targets = new Set<string>(gameIds);
+    const records = this.load();
+    const next = records.map((r) =>
+      targets.has(r.gameId) ? { ...r, settledAt } : r,
+    );
+    const valid = next.map((r) => validateBeforeWrite(() => parseGameRecord(r)));
+    writeStored(this.store, STORAGE_KEYS.records, valid);
+  }
+}
+
+/* ───────── 精算（複数対局のまとめ払い） ───────── */
+
+export class StorageSettlementRecordRepository implements SettlementRecordRepository {
+  private readonly store: KeyValueStore;
+
+  constructor(store: KeyValueStore) {
+    this.store = store;
+  }
+
+  private load(): SettlementRecord[] {
+    const data = readStored(this.store, STORAGE_KEYS.settlements);
+    return data === undefined ? [] : parseStored(() => parseSettlementRecords(data));
+  }
+
+  async findAll(): Promise<readonly SettlementRecord[]> {
+    return this.load();
+  }
+
+  async find(id: SettlementId): Promise<SettlementRecord | null> {
+    return this.load().find((r) => r.id === id) ?? null;
+  }
+
+  async add(record: SettlementRecord): Promise<void> {
+    const records = this.load();
+    if (records.some((r) => r.id === record.id)) {
+      throw new DomainError("DUPLICATE_RECORD", "この精算の記録はすでに保存されています");
+    }
+    const valid = validateBeforeWrite(() => parseSettlementRecord(record));
+    writeStored(this.store, STORAGE_KEYS.settlements, [...records, valid]);
   }
 }
 

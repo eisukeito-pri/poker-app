@@ -9,6 +9,7 @@ import { GameScreen } from "./screens/GameScreen";
 import { ResultInputScreen } from "./screens/ResultInputScreen";
 import { SettlementScreen } from "./screens/SettlementScreen";
 import { HistoryDetailScreen } from "./screens/HistoryDetailScreen";
+import { SettlementDetailScreen } from "./screens/SettlementDetailScreen";
 import { HistoryScreen } from "./screens/HistoryScreen";
 import { StatsScreen } from "./screens/StatsScreen";
 import { RosterScreen } from "./screens/RosterScreen";
@@ -32,6 +33,8 @@ export function ScreenRouter(): ReactNode {
       return <HistoryScreen />;
     case "HistoryDetail":
       return <HistoryDetailScreen gameId={screen.gameId} />;
+    case "SettlementDetail":
+      return <SettlementDetailScreen settlementId={screen.settlementId} />;
     case "Stats":
       return <StatsScreen />;
     case "Roster":

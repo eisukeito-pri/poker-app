@@ -3,7 +3,7 @@
  *
  * 通算成績は保存済みの対局（GameRecord）から集計する「投影」で、集約ではない。
  */
-import type { GameId, IsoDateTime, PlayerId, Yen } from "../shared/types";
+import type { GameId, IsoDateTime, PlayerId, SettlementId, Yen } from "../shared/types";
 import type { GamePlayer, GameSettings } from "../game/types";
 import type { PlayerResult, Transfer } from "../settlement/types";
 
@@ -26,7 +26,14 @@ export interface PlayerRepository {
 
 /* ───────── 履歴 ───────── */
 
-/** 精算まで済んだ対局の確定記録（スナップショット）。編集はできず、削除のみ */
+/**
+ * 結果入力まで済んだ対局の確定記録（スナップショット）。編集はできず、削除のみ。
+ *
+ * 対局を終えてもお金はまだ動かないことがある（複数対局分をまとめて精算する場合）。
+ * settledAt が null の間は「未精算」で、精算（SettlementRecord）が作られると
+ * その時刻が入る。transfers はこの対局単体で見たときの送金額の参考値であり、
+ * 実際に支払う金額は未精算の対局をまとめた SettlementRecord の方で決まる。
+ */
 export interface GameRecord {
   readonly gameId: GameId;
   /** 対局を始めた時刻 */
@@ -37,7 +44,10 @@ export interface GameRecord {
   readonly handsPlayed: number;
   /** 座席順 */
   readonly results: readonly PlayerResult[];
+  /** この対局単体だけで精算した場合の送金額（参考値） */
   readonly transfers: readonly Transfer[];
+  /** 未精算なら null。精算されたら、その時刻が入る */
+  readonly settledAt: IsoDateTime | null;
 }
 
 export interface GameRecordRepository {
@@ -46,6 +56,44 @@ export interface GameRecordRepository {
   /** 同じgameIdの記録がすでにあれば DUPLICATE_RECORD */
   add(record: GameRecord): Promise<void>;
   remove(gameId: GameId): Promise<void>;
+  /** 指定した対局群の settledAt に時刻を設定する（存在しないIDは無視） */
+  markSettled(gameIds: readonly GameId[], settledAt: IsoDateTime): Promise<void>;
+}
+
+/* ───────── 精算（複数対局のまとめ払い） ───────── */
+
+/** ある精算に含まれる、1人分の合算収支 */
+export interface PlayerYenBalance {
+  readonly playerId: PlayerId;
+  /** 名前のスナップショット（精算時点） */
+  readonly name: string;
+  readonly netYen: Yen;
+}
+
+/**
+ * 「精算して支払いへ」を押した時点で、未精算の対局をまとめて1回分の支払いにした記録。
+ *
+ * 合算ルール：対象の各対局について、参加していた人だけを対象に、対局ごとの
+ * netYen（すでに円換算済み）を人ごとに合計する。ある対局に参加していない人は、
+ * その対局分は0円として扱う（＝無視する）。各対局の収支は必ず合計0円なので、
+ * 合算後の収支も必ず合計0円になる。
+ */
+export interface SettlementRecord {
+  readonly id: SettlementId;
+  readonly settledAt: IsoDateTime;
+  /** この精算に含まれる対局（新しい順ではなく、対象になった順） */
+  readonly gameIds: readonly GameId[];
+  /** 合算収支（収支の大きい順） */
+  readonly balances: readonly PlayerYenBalance[];
+  /** 最小回数の送金リスト */
+  readonly transfers: readonly Transfer[];
+}
+
+export interface SettlementRecordRepository {
+  /** 新しい順 */
+  findAll(): Promise<readonly SettlementRecord[]>;
+  find(id: SettlementId): Promise<SettlementRecord | null>;
+  add(record: SettlementRecord): Promise<void>;
 }
 
 /* ───────── 通算成績（読み取り専用の投影） ───────── */

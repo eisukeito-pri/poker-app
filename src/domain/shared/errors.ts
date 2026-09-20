@@ -22,7 +22,9 @@ export type DomainErrorCode =
   | "STORAGE_CORRUPTED" // 保存されているデータが壊れている
   | "GAME_IN_PROGRESS" // 進行中の対局があるため、新しい対局を始められない
   | "NO_CURRENT_GAME" // 進行中の対局がない
-  | "RECORD_NOT_FOUND"; // 指定した記録がない
+  | "RECORD_NOT_FOUND" // 指定した記録がない
+  | "NO_PENDING_SETTLEMENT" // 未精算の対局が1件もない
+  | "SETTLEMENT_NOT_FOUND"; // 指定した精算記録がない
 
 export class DomainError extends Error {
   readonly code: DomainErrorCode;

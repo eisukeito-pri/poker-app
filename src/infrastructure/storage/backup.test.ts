@@ -8,6 +8,7 @@ import {
   StorageLastGameSetupRepository,
   StoragePlayerRepository,
   StorageResultDraftRepository,
+  StorageSettlementRecordRepository,
 } from "./repositories";
 import { ALL_STORAGE_KEYS, STORAGE_KEYS } from "./storage-io";
 import { edit, sampleBackup, sampleRecord, viaJson } from "./test-fixtures";
@@ -22,6 +23,8 @@ async function populatedStore(): Promise<MemoryKeyValueStore> {
   for (const player of data.players) await players.save(player);
   const records = new StorageGameRecordRepository(store);
   for (const record of data.records) await records.add(record);
+  const settlements = new StorageSettlementRecordRepository(store);
+  for (const settlement of data.settlements) await settlements.add(settlement);
   if (data.currentGame) await new StorageGameRepository(store).saveCurrent(data.currentGame);
   if (data.resultDraft) await new StorageResultDraftRepository(store).save(data.resultDraft);
   if (data.lastSetup) await new StorageLastGameSetupRepository(store).save(data.lastSetup);
@@ -66,6 +69,7 @@ describe("AppDataStore.createBackup", () => {
     const expected = sampleBackup(NOW);
     expect(backup.players).toEqual(expected.players);
     expect(backup.records.map((r) => r.gameId).sort()).toEqual(["g1", "g2"]);
+    expect(backup.settlements.map((s) => s.id)).toEqual(expected.settlements.map((s) => s.id));
     expect(backup.currentGame).toEqual(expected.currentGame);
     expect(backup.resultDraft).toEqual(expected.resultDraft);
     expect(backup.lastSetup).toEqual(expected.lastSetup);
@@ -79,6 +83,7 @@ describe("AppDataStore.createBackup", () => {
       exportedAt: NOW,
       players: [],
       records: [],
+      settlements: [],
       currentGame: null,
       resultDraft: null,
       lastSetup: null,
@@ -110,6 +115,7 @@ describe("AppDataStore.restore（置き換え）", () => {
     new AppDataStore(store).restore(viaJson(incoming));
 
     expect((await new StorageGameRecordRepository(store).findAll()).map((r) => r.gameId)).toEqual(["g2", "g1"]);
+    expect((await new StorageSettlementRecordRepository(store).findAll()).map((s) => s.id)).toEqual(["s1"]);
     expect(await new StorageGameRepository(store).findCurrent()).toBeNull();
     expect(store.getItem(STORAGE_KEYS.currentGame)).toBeNull();
     expect((await new StoragePlayerRepository(store).findAll()).map((p) => p.name)).toEqual(["Alice", "Bob", "Carol"]);
