@@ -65,13 +65,13 @@ async function setup() {
 }
 
 describe("getResultSheet / enterResult", () => {
-  test("最初は全員未入力（最後の一人は自動入力欄）", async () => {
+  test("最初は全員未入力（誰も自動入力にはならない）", async () => {
     const { settlementUseCases, alice, bob, carol } = await setup();
     const sheet = await settlementUseCases.getResultSheet();
     expect(sheet.entries.map((e) => [e.playerId, e.kind])).toEqual([
       [alice.id, "Input"],
       [bob.id, "Input"],
-      [carol.id, "AutoFilled"],
+      [carol.id, "Input"],
     ]);
     expect(sheet.isComplete).toBe(false);
   });
@@ -94,8 +94,11 @@ describe("getResultSheet / enterResult", () => {
     expect(sheet.entries.find((e) => e.playerId === alice.id)?.netChips).toBeNull();
   });
 
-  test("自動入力の人には入力できない", async () => {
-    const { settlementUseCases, carol } = await setup();
+  test("残り1人になって自動入力になった人には入力できない", async () => {
+    const { settlementUseCases, alice, bob, carol } = await setup();
+    await settlementUseCases.enterResult(alice.id, 500);
+    await settlementUseCases.enterResult(bob.id, -200);
+    // 残るはcarolだけになったので、carolが自動入力になる
     await expectRejects(() => settlementUseCases.enterResult(carol.id, 100), "RESULT_INVALID");
   });
 

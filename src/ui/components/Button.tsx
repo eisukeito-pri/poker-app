@@ -2,11 +2,13 @@
 import type { ReactNode } from "react";
 
 export type ButtonVariant = "primary" | "secondary" | "danger" | "ghost";
+export type ButtonSize = "normal" | "large";
 
 export interface ButtonProps {
   readonly children: ReactNode;
   readonly onClick: () => void;
   readonly variant?: ButtonVariant;
+  readonly size?: ButtonSize;
   readonly disabled?: boolean;
   readonly fullWidth?: boolean;
   readonly type?: "button" | "submit";
@@ -17,12 +19,18 @@ export function Button(props: ButtonProps): ReactNode {
     children,
     onClick,
     variant = "secondary",
+    size = "normal",
     disabled = false,
     fullWidth = false,
     type = "button",
   } = props;
 
-  const className = ["btn", `btn-${variant}`, fullWidth ? "btn-full" : ""]
+  const className = [
+    "btn",
+    `btn-${variant}`,
+    size === "large" ? "btn-large" : "",
+    fullWidth ? "btn-full" : "",
+  ]
     .filter(Boolean)
     .join(" ");
 

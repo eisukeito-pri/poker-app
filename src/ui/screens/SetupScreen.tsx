@@ -8,7 +8,7 @@
  * - 「この設定で始める」を押すと対局を作る。進行中の対局がある場合は
  *   GAME_IN_PROGRESS になるので、確認してから破棄して始め直す。
  */
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { useShell } from "../ShellContext";
 import { Button } from "../components/Button";
@@ -17,6 +17,7 @@ import { Banner } from "../components/Banner";
 import { errorCodeOf, toUserMessage } from "../errorMessages";
 import { MAX_PLAYERS, MIN_PLAYERS } from "../../domain/shared/types";
 import type { Player } from "../../domain/roster/types";
+import { CIRCLE_LAYOUT_MAX_PLAYERS, seatCirclePosition } from "../seatCircle";
 
 interface FormFields {
   startingChips: string;
@@ -98,6 +99,7 @@ export function SetupScreen(): ReactNode {
   const [players, setPlayers] = useState<readonly Player[]>([]);
   const [selectedIds, setSelectedIds] = useState<readonly string[]>([]);
   const [dealerId, setDealerId] = useState<string | null>(null);
+  const [selectedSeatId, setSelectedSeatId] = useState<string | null>(null);
   const [newPlayerName, setNewPlayerName] = useState("");
   const [fromLastGame, setFromLastGame] = useState(false);
   const [fields, setFields] = useState<FormFields>(toFields({
@@ -109,6 +111,16 @@ export function SetupScreen(): ReactNode {
     yenPerChip: 0.1,
   }));
   const [submitting, setSubmitting] = useState(false);
+  const [revealing, setRevealing] = useState(false);
+  const [revealName, setRevealName] = useState("");
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -146,6 +158,7 @@ export function SetupScreen(): ReactNode {
       if (prev.includes(id)) {
         const next = prev.filter((p) => p !== id);
         if (dealerId === id) setDealerId(null);
+        if (selectedSeatId === id) setSelectedSeatId(null);
         return next;
       }
       if (prev.length >= MAX_PLAYERS) {
@@ -190,9 +203,29 @@ export function SetupScreen(): ReactNode {
   }
 
   function chooseRandomDealer() {
-    if (selectedIds.length === 0) return;
-    const id = services.game.chooseRandomDealer(selectedIds);
-    setDealerId(id);
+    if (selectedIds.length === 0 || revealing) return;
+    const finalId = services.game.chooseRandomDealer(selectedIds);
+    const durationMs = 2000;
+    const start = Date.now();
+    setRevealing(true);
+
+    const tick = () => {
+      if (!mountedRef.current) return;
+      const elapsed = Date.now() - start;
+      if (elapsed >= durationMs) {
+        setDealerId(finalId);
+        setRevealName(playerName(finalId));
+        setRevealing(false);
+        return;
+      }
+      const candidate = selectedIds[Math.floor(Math.random() * selectedIds.length)]!;
+      setRevealName(playerName(candidate));
+      // 終盤ほど切り替えをゆっくりにして、決まる瞬間を分かりやすくする
+      const remaining = durationMs - elapsed;
+      const delay = remaining < 500 ? 180 : remaining < 1000 ? 110 : 70;
+      window.setTimeout(tick, delay);
+    };
+    tick();
   }
 
   async function submit() {
@@ -300,54 +333,104 @@ export function SetupScreen(): ReactNode {
       {selectedIds.length > 0 && (
         <section className="setup-section">
           <h2 className="setup-section-title">座席順</h2>
-          <ul className="seat-order-list">
-            {selectedIds.map((id, index) => (
-              <li key={id} className="seat-order-item">
-                <span className="seat-order-number">{index + 1}</span>
-                <span className="seat-order-name">{playerName(id)}</span>
-                <span className="seat-order-controls">
-                  <button
-                    type="button"
-                    className="icon-button"
-                    aria-label="上へ"
-                    disabled={index === 0}
-                    onClick={() => moveSelected(id, -1)}
-                  >
-                    ↑
-                  </button>
-                  <button
-                    type="button"
-                    className="icon-button"
-                    aria-label="下へ"
-                    disabled={index === selectedIds.length - 1}
-                    onClick={() => moveSelected(id, 1)}
-                  >
-                    ↓
-                  </button>
-                </span>
-              </li>
-            ))}
-          </ul>
+          {selectedIds.length <= CIRCLE_LAYOUT_MAX_PLAYERS ? (
+            <>
+              <p className="section-hint">丸をタップすると、その人の位置を前後に動かせます。</p>
+              <div className="seat-circle seat-circle-setup">
+                {selectedIds.map((id, index) => {
+                  const pos = seatCirclePosition(index, selectedIds.length);
+                  const isSelected = selectedSeatId === id;
+                  return (
+                    <button
+                      key={id}
+                      type="button"
+                      className={`seat-circle-item${isSelected ? " is-expanded" : ""}`}
+                      style={{ left: pos.left, top: pos.top }}
+                      onClick={() => setSelectedSeatId(isSelected ? null : id)}
+                    >
+                      <span className="seat-circle-name">{playerName(id)}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              {selectedSeatId && (
+                <div className="seat-circle-controls">
+                  <span className="section-hint">{playerName(selectedSeatId)}さんの位置を変える</span>
+                  <div className="seat-order-controls">
+                    <Button
+                      variant="secondary"
+                      disabled={selectedIds.indexOf(selectedSeatId) === 0}
+                      onClick={() => moveSelected(selectedSeatId, -1)}
+                    >
+                      ← 前へ
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      disabled={selectedIds.indexOf(selectedSeatId) === selectedIds.length - 1}
+                      onClick={() => moveSelected(selectedSeatId, 1)}
+                    >
+                      次へ →
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+            <ul className="seat-order-list">
+              {selectedIds.map((id, index) => (
+                <li key={id} className="seat-order-item">
+                  <span className="seat-order-number">{index + 1}</span>
+                  <span className="seat-order-name">{playerName(id)}</span>
+                  <span className="seat-order-controls">
+                    <button
+                      type="button"
+                      className="icon-button"
+                      aria-label="上へ"
+                      disabled={index === 0}
+                      onClick={() => moveSelected(id, -1)}
+                    >
+                      ↑
+                    </button>
+                    <button
+                      type="button"
+                      className="icon-button"
+                      aria-label="下へ"
+                      disabled={index === selectedIds.length - 1}
+                      onClick={() => moveSelected(id, 1)}
+                    >
+                      ↓
+                    </button>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
         </section>
       )}
 
       {selectedIds.length >= MIN_PLAYERS && (
         <section className="setup-section">
           <h2 className="setup-section-title">最初の親</h2>
-          <div className="dealer-select-row">
-            {selectedIds.map((id) => (
-              <button
-                key={id}
-                type="button"
-                className={`dealer-select-item${dealerId === id ? " is-selected" : ""}`}
-                onClick={() => setDealerId(id)}
-              >
-                {playerName(id)}
-              </button>
-            ))}
-          </div>
-          <Button variant="ghost" onClick={chooseRandomDealer}>
-            ランダムで決める
+          {revealing ? (
+            <div className="dealer-reveal">
+              <span className="dealer-reveal-name">{revealName}</span>
+            </div>
+          ) : (
+            <div className="dealer-select-row">
+              {selectedIds.map((id) => (
+                <button
+                  key={id}
+                  type="button"
+                  className={`dealer-select-item${dealerId === id ? " is-selected" : ""}`}
+                  onClick={() => setDealerId(id)}
+                >
+                  {playerName(id)}
+                </button>
+              ))}
+            </div>
+          )}
+          <Button variant="ghost" disabled={revealing} onClick={chooseRandomDealer}>
+            {revealing ? "決めています…" : "ランダムで決める"}
           </Button>
         </section>
       )}
@@ -392,7 +475,7 @@ export function SetupScreen(): ReactNode {
         />
       </section>
 
-      <Button variant="primary" fullWidth disabled={submitting} onClick={submit}>
+      <Button variant="primary" fullWidth disabled={submitting || revealing} onClick={submit}>
         {submitting ? "作成中…" : "この設定で始める"}
       </Button>
     </div>

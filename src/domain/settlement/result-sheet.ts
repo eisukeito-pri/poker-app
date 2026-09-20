@@ -3,12 +3,14 @@
  *
  * ルール：
  * - 脱落者は −開始チップ全額で自動確定
- * - 生存者のうち座席順で一番後ろの1人は「自動入力」。他の全員がそろうと、
- *   全員の合計が0になる値が入る
+ * - 生存者のうち「入力が済んでいないのがちょうど1人」になった時点で、その1人が
+ *   自動入力になる（他の全員の合計から逆算して、全体の合計が0になる値が入る）。
+ *   自動入力の対象は座席順で固定ではなく、どの生存者が最後に残るかで決まる。
+ * - 生存者全員が自分で入力しきった場合は自動入力なしで、合計が0にならなければ
+ *   精算の段階でエラーになる（RESULT_INVALID）
  * - 値の範囲は −開始チップ 〜 (参加人数−1)×開始チップ。範囲外は issues に載り、
  *   canSettle が false になる（自動入力の値も対象）
- * - 状態が変わった人（脱落／復帰、自動入力の対象になった人・外れた人）の
- *   入力値は破棄し、それ以外の人の入力値は保持する
+ * - 脱落した人の入力値は破棄し、それ以外の生存者の入力値は保持する
  */
 import { chips } from "../shared/constructors";
 import { DomainError } from "../shared/errors";
@@ -33,20 +35,35 @@ function build(params: BuildParams): ResultSheet {
   const { seatOrder, eliminated, startingChips, inputs } = params;
 
   const survivors = seatOrder.filter((id) => !eliminated.has(id));
-  const autoFilledId = survivors[survivors.length - 1];
-  if (autoFilledId === undefined) {
+  if (survivors.length === 0) {
     throw new DomainError("RESULT_INVALID", "生存者がいません");
   }
   const loss = chips(-startingChips);
 
-  // 自動入力の人以外の値
-  const others = seatOrder
-    .filter((id) => id !== autoFilledId)
-    .map((id) => (eliminated.has(id) ? loss : (inputs.get(id) ?? null)));
-  const allOthersFilled = others.every((value) => value !== null);
-  const othersTotal = others.reduce<number>((sum, value) => sum + (value ?? 0), 0);
-  // 0 から引くのは、-0 を避けるため
-  const autoNet: Chips | null = allOthersFilled ? ((0 - othersTotal) as Chips) : null;
+  // 自動入力の対象：生存者のうち入力が済んでいないのがちょうど1人ならその人。
+  // 誰も未入力でない（全員自分で入力しきった）、または2人以上未入力なら自動入力なし。
+  // 生存者が1人だけなら、たとえ前の入力値が残っていてもその人が必ず自動入力になる
+  // （全員の負けの合計を受け取る以外の値はあり得ないため）。
+  const unfilledSurvivors = survivors.filter((id) => inputs.get(id) === undefined);
+  const autoFilledId: PlayerId | undefined =
+    survivors.length === 1
+      ? survivors[0]
+      : unfilledSurvivors.length === 1
+        ? unfilledSurvivors[0]
+        : undefined;
+
+  let autoNet: Chips | null = null;
+  if (autoFilledId !== undefined) {
+    const others = seatOrder
+      .filter((id) => id !== autoFilledId)
+      .map((id) => (eliminated.has(id) ? loss : (inputs.get(id) ?? null)));
+    const allOthersFilled = others.every((value) => value !== null);
+    if (allOthersFilled) {
+      const othersTotal = others.reduce<number>((sum, value) => sum + (value ?? 0), 0);
+      // 0 から引くのは、-0 を避けるため
+      autoNet = (0 - othersTotal) as Chips;
+    }
+  }
 
   const entries: ResultEntry[] = seatOrder.map((id): ResultEntry => {
     if (eliminated.has(id)) {
@@ -178,19 +195,11 @@ export function updateEliminated(
   const seatOrder = seatOrderOf(sheet);
   const eliminated = toEliminatedSet(seatOrder, eliminatedIds);
 
-  // いったん空の入力で作って、新しい「種類」を確かめる
-  const next = build({
-    seatOrder,
-    eliminated,
-    startingChips: sheet.startingChips,
-    inputs: new Map(),
-  });
-  const nextKinds = new Map(next.entries.map((e) => [e.playerId, e.kind]));
-
-  // Input のままの人の値だけ引き継ぐ
+  // 脱落した人の入力値は捨てる。それ以外（生存中・復帰した人）の値は保持する。
+  // 誰が自動入力になるかは build() が入力状況から毎回決め直す。
   const inputs = new Map<PlayerId, Chips>();
   for (const [id, value] of inputsOf(sheet)) {
-    if (nextKinds.get(id) === "Input") inputs.set(id, value);
+    if (!eliminated.has(id)) inputs.set(id, value);
   }
   return build({
     seatOrder,

@@ -30,17 +30,17 @@ const kinds = (sheet: ResultSheet) => sheet.entries.map((e) => e.kind);
 const nets = (sheet: ResultSheet) => sheet.entries.map((e) => e.netChips);
 
 describe("create", () => {
-  test("脱落者は−開始チップで確定、一番後ろの生存者が自動入力、他は未入力", () => {
+  test("脱落者は−開始チップで確定。まだ誰も入力していない間は、生存者は全員入力欄", () => {
     const sheet = create(["E"]);
-    expect(kinds(sheet)).toEqual(["Input", "Input", "Input", "AutoFilled", "Eliminated"]);
+    expect(kinds(sheet)).toEqual(["Input", "Input", "Input", "Input", "Eliminated"]);
     expect(nets(sheet)).toEqual([null, null, null, null, -1000]);
     expect(sheet.isComplete).toBe(false);
     expect(sheet.canSettle).toBe(false);
     expect(sheet.issues).toEqual([]);
   });
 
-  test("脱落者がいなければ、座席順で最後の人が自動入力", () => {
-    expect(kinds(create([]))).toEqual(["Input", "Input", "Input", "Input", "AutoFilled"]);
+  test("脱落者がいなくても、作った直後は誰も自動入力にならない", () => {
+    expect(kinds(create([]))).toEqual(["Input", "Input", "Input", "Input", "Input"]);
   });
 
   test("生存者が1人なら、その人が全員の負けを受け取って即完成する", () => {
@@ -96,9 +96,15 @@ describe("enter", () => {
     expect(sheet.canSettle).toBe(false);
   });
 
-  test("脱落者と自動入力の人には入力できない", () => {
-    const sheet = create(["E"]);
+  test("脱落者と、今まさに自動入力になっている人には入力できない", () => {
+    let sheet = create(["E"]);
     expectDomainError(() => enter(sheet, "E", 100), "RESULT_INVALID");
+    // まだ誰も自動入力ではないので、この時点ではDにも入力できる
+    sheet = enter(sheet, "A", 500);
+    sheet = enter(sheet, "B", -200);
+    sheet = enter(sheet, "C", 100);
+    // 残るはDだけになったので、Dが自動入力になる
+    expect(entryOf(sheet, "D").kind).toBe("AutoFilled");
     expectDomainError(() => enter(sheet, "D", 100), "RESULT_INVALID");
     expectDomainError(() => enter(sheet, "Z", 100), "PLAYER_NOT_FOUND");
   });
@@ -167,24 +173,25 @@ describe("updateEliminated（結果入力画面での脱落・復帰）", () => 
     expect(sheet.isComplete).toBe(true);
   });
 
-  test("脱落者が復帰：座席順で最後なら自動入力になり、元の自動入力の人は未入力に戻る", () => {
+  test("脱落者が復帰：未入力の生存者が2人になるので、どちらも自動入力にはならない", () => {
     const sheet = sheets.updateEliminated(filled(), []);
-    expect(kinds(sheet)).toEqual(["Input", "Input", "Input", "Input", "AutoFilled"]);
+    expect(kinds(sheet)).toEqual(["Input", "Input", "Input", "Input", "Input"]);
     expect(entryOf(sheet, "A").netChips).toBe(500);
     expect(entryOf(sheet, "B").netChips).toBe(-200);
     expect(entryOf(sheet, "C").netChips).toBe(100);
     expect(entryOf(sheet, "D").netChips).toBeNull(); // 自動入力から入力欄に戻った → 未入力
-    expect(entryOf(sheet, "E").netChips).toBeNull();
+    expect(entryOf(sheet, "E").netChips).toBeNull(); // 復帰したばかりで未入力
     expect(sheet.isComplete).toBe(false);
   });
 
-  test("最後の生存者が脱落：一つ前の人が自動入力になり、その人の入力値は破棄される", () => {
+  test("最後の生存者が脱落しても、すでに入力済みの人の値は変わらない（自動入力にはならない）", () => {
     const sheet = sheets.updateEliminated(filled(), ids("D", "E"));
-    expect(kinds(sheet)).toEqual(["Input", "Input", "AutoFilled", "Eliminated", "Eliminated"]);
+    expect(kinds(sheet)).toEqual(["Input", "Input", "Input", "Eliminated", "Eliminated"]);
     expect(entryOf(sheet, "A").netChips).toBe(500);
     expect(entryOf(sheet, "B").netChips).toBe(-200);
-    // C = -(500 - 200 - 1000 - 1000) = 1700（元の入力100は破棄）
-    expect(entryOf(sheet, "C").netChips).toBe(1700);
+    // Cはすでに自分で入力済み（100）なので、破棄されず自動入力にもならない
+    expect(entryOf(sheet, "C").netChips).toBe(100);
+    expect(sheet.isComplete).toBe(true);
   });
 
   test("生存者が1人になれば即完成し、生存者がいなくなる変更は拒否する", () => {

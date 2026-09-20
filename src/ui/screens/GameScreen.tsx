@@ -14,6 +14,7 @@ import { Button } from "../components/Button";
 import { ScreenHeader } from "../components/ScreenHeader";
 import type { GameView } from "../../application/types";
 import type { GameEvent } from "../../domain/game/types";
+import { CIRCLE_LAYOUT_MAX_PLAYERS, seatCirclePosition } from "../seatCircle";
 
 function describeLastEvent(event: GameEvent | null, nameOf: (id: string) => string): string {
   if (!event) return "";
@@ -179,63 +180,114 @@ export function GameScreen(): ReactNode {
         SB {state.blinds.smallBlind} / BB {state.blinds.bigBlind}
       </div>
 
-      <ul className="game-player-list">
-        {view.game.seats.map((player) => {
-          const isEliminated = state.eliminatedPlayerIds.includes(player.id);
-          const isDealer = state.dealerId === player.id;
-          const isSB = state.smallBlindId === player.id;
-          const isBB = state.bigBlindId === player.id;
-          const expanded = expandedId === player.id;
+      {view.game.seats.length <= CIRCLE_LAYOUT_MAX_PLAYERS ? (
+        <div className="seat-circle">
+          {view.game.seats.map((player, index) => {
+            const isEliminated = state.eliminatedPlayerIds.includes(player.id);
+            const isDealer = state.dealerId === player.id;
+            const isSB = state.smallBlindId === player.id;
+            const isBB = state.bigBlindId === player.id;
+            const expanded = expandedId === player.id;
+            const pos = seatCirclePosition(index, view.game.seats.length);
 
-          return (
-            <li key={player.id} className="game-player-item-wrap">
+            return (
               <button
+                key={player.id}
                 type="button"
-                className={`game-player-item${isEliminated ? " is-eliminated" : ""}${
+                className={`seat-circle-item${isEliminated ? " is-eliminated" : ""}${
                   expanded ? " is-expanded" : ""
                 }`}
+                style={{ left: pos.left, top: pos.top }}
                 onClick={() => setExpandedId(expanded ? null : player.id)}
                 disabled={busy}
               >
-                <span className="game-player-name">
+                <span className="seat-circle-badges">
+                  {isDealer && <span className="badge badge-dealer">親</span>}
+                  {isSB && <span className="badge badge-sb">SB</span>}
+                  {isBB && <span className="badge badge-bb">BB</span>}
+                </span>
+                <span className="seat-circle-name">
                   {isEliminated && <span className="game-player-mark">×</span>}
                   {player.name}
                 </span>
-                <span className="game-player-badges">
-                  {isDealer && <span className="badge badge-dealer">親</span>}
-                  {isSB && <span className="badge badge-blind">SB</span>}
-                  {isBB && <span className="badge badge-blind">BB</span>}
-                </span>
               </button>
-              {expanded && (
-                <div className="game-player-actions">
-                  {isEliminated ? (
-                    <Button
-                      variant="secondary"
-                      fullWidth
-                      disabled={busy}
-                      onClick={() => handleReinstate(player.id)}
-                    >
-                      復帰させる
-                    </Button>
-                  ) : (
-                    <Button
-                      variant="danger"
-                      fullWidth
-                      disabled={busy}
-                      onClick={() => handleEliminate(player.id)}
-                    >
-                      脱落させる
-                    </Button>
-                  )}
-                </div>
-              )}
-            </li>
-          );
-        })}
-      </ul>
+            );
+          })}
+        </div>
+      ) : (
+        <ul className="game-player-list">
+          {view.game.seats.map((player) => {
+            const isEliminated = state.eliminatedPlayerIds.includes(player.id);
+            const isDealer = state.dealerId === player.id;
+            const isSB = state.smallBlindId === player.id;
+            const isBB = state.bigBlindId === player.id;
+            const expanded = expandedId === player.id;
 
-      <Button variant="primary" fullWidth disabled={busy} onClick={handlePrimaryAction}>
+            return (
+              <li key={player.id} className="game-player-item-wrap">
+                <button
+                  type="button"
+                  className={`game-player-item${isEliminated ? " is-eliminated" : ""}${
+                    expanded ? " is-expanded" : ""
+                  }`}
+                  onClick={() => setExpandedId(expanded ? null : player.id)}
+                  disabled={busy}
+                >
+                  <span className="game-player-name">
+                    {isEliminated && <span className="game-player-mark">×</span>}
+                    {player.name}
+                  </span>
+                  <span className="game-player-badges">
+                    {isDealer && <span className="badge badge-dealer">親</span>}
+                    {isSB && <span className="badge badge-sb">SB</span>}
+                    {isBB && <span className="badge badge-bb">BB</span>}
+                  </span>
+                </button>
+                {expanded && (
+                  <div className="game-player-actions">
+                    {isEliminated ? (
+                      <Button
+                        variant="secondary"
+                        fullWidth
+                        disabled={busy}
+                        onClick={() => handleReinstate(player.id)}
+                      >
+                        復帰させる
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="danger"
+                        fullWidth
+                        disabled={busy}
+                        onClick={() => handleEliminate(player.id)}
+                      >
+                        脱落させる
+                      </Button>
+                    )}
+                  </div>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+
+      {expandedId && view.game.seats.length <= CIRCLE_LAYOUT_MAX_PLAYERS && (
+        <div className="game-player-actions">
+          <p className="section-hint">{nameOf(expandedId)}さん</p>
+          {state.eliminatedPlayerIds.some((id) => (id as string) === expandedId) ? (
+            <Button variant="secondary" fullWidth disabled={busy} onClick={() => handleReinstate(expandedId)}>
+              復帰させる
+            </Button>
+          ) : (
+            <Button variant="danger" fullWidth disabled={busy} onClick={() => handleEliminate(expandedId)}>
+              脱落させる
+            </Button>
+          )}
+        </div>
+      )}
+
+      <Button variant="primary" size="large" fullWidth disabled={busy} onClick={handlePrimaryAction}>
         {primaryLabel}
       </Button>
       <Button
