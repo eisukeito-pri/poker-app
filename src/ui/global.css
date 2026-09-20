@@ -439,3 +439,111 @@ button,
   border-color: var(--color-accent);
   color: #1a1a1a;
 }
+
+/* ── 対局画面 ───────────────────────────── */
+
+.header-text-button {
+  border: none;
+  background: transparent;
+  color: var(--color-danger);
+  font-size: 0.95rem;
+  padding: 8px 4px;
+}
+
+.hand-counter {
+  text-align: center;
+}
+
+.hand-counter-main {
+  font-size: 1.6rem;
+  font-weight: 700;
+}
+
+.hand-counter-sub {
+  margin-top: 4px;
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+}
+
+.blinds-display {
+  text-align: center;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--color-accent);
+}
+
+.game-player-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+}
+
+.game-player-item-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.game-player-item {
+  min-height: 56px;
+  padding: 12px 16px;
+  border-radius: var(--radius);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 1.05rem;
+  width: 100%;
+}
+
+.game-player-item.is-expanded {
+  border-color: var(--color-primary);
+}
+
+.game-player-item.is-eliminated {
+  background: var(--color-bg);
+  color: var(--color-text-muted);
+}
+
+.game-player-mark {
+  color: var(--color-danger);
+  margin-right: 6px;
+  font-weight: 700;
+}
+
+.game-player-badges {
+  display: flex;
+  gap: 6px;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 24px;
+  padding: 0 8px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.badge-dealer {
+  background: var(--color-primary);
+  color: var(--color-primary-text);
+}
+
+.badge-blind {
+  background: var(--color-accent);
+  color: #1a1a1a;
+}
+
+.game-player-actions {
+  padding: 0 4px;
+}
