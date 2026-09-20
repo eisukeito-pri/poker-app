@@ -547,3 +547,137 @@ button,
 .game-player-actions {
   padding: 0 4px;
 }
+
+/* ── 結果入力・精算画面 ───────────────────────────── */
+
+.section-hint {
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+.result-entry-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.result-entry-item-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.result-entry-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.result-entry-item.is-eliminated {
+  background: var(--color-bg);
+  color: var(--color-text-muted);
+}
+
+.result-entry-name {
+  border: none;
+  background: transparent;
+  color: inherit;
+  font-size: 1rem;
+  text-align: left;
+  flex: 1;
+  padding: 4px 0;
+}
+
+.result-entry-input {
+  width: 110px;
+  text-align: right;
+}
+
+.result-entry-value {
+  min-width: 110px;
+  text-align: right;
+  font-size: 1rem;
+  color: var(--color-text-muted);
+}
+
+.result-entry-auto-label {
+  margin-left: 6px;
+  font-size: 0.75rem;
+  color: var(--color-accent);
+}
+
+.result-entry-issue {
+  margin: 0;
+  padding-left: 4px;
+  color: var(--color-danger);
+  font-size: 0.8rem;
+}
+
+.settlement-result-list,
+.settlement-transfer-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.settlement-result-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 4px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.settlement-result-item:last-child {
+  border-bottom: none;
+}
+
+.settlement-result-name {
+  font-size: 1rem;
+}
+
+.settlement-result-amount {
+  font-weight: 700;
+  color: var(--color-text-muted);
+}
+
+.settlement-result-amount.is-positive {
+  color: var(--color-primary);
+}
+
+.settlement-result-amount.is-negative {
+  color: var(--color-danger);
+}
+
+.settlement-transfer-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 4px;
+  border-bottom: 1px solid var(--color-border);
+  font-size: 0.95rem;
+}
+
+.settlement-transfer-item:last-child {
+  border-bottom: none;
+}
+
+.settlement-transfer-arrow {
+  color: var(--color-text-muted);
+}
+
+.settlement-transfer-amount {
+  margin-left: auto;
+  font-weight: 700;
+}

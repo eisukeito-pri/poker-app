@@ -8,6 +8,9 @@ import { HOME_SCREEN } from "./navigation";
 import { HomeScreen } from "./screens/HomeScreen";
 import { SetupScreen } from "./screens/SetupScreen";
 import { GameScreen } from "./screens/GameScreen";
+import { ResultInputScreen } from "./screens/ResultInputScreen";
+import { SettlementScreen } from "./screens/SettlementScreen";
+import { HistoryDetailScreen } from "./screens/HistoryDetailScreen";
 import { PlaceholderScreen } from "./screens/PlaceholderScreen";
 
 export function ScreenRouter(): ReactNode {
@@ -22,18 +25,13 @@ export function ScreenRouter(): ReactNode {
     case "Game":
       return <GameScreen />;
     case "ResultInput":
-      return <PlaceholderScreen title="結果の入力" onBack={goHome} />;
+      return <ResultInputScreen />;
     case "Settlement":
-      return <PlaceholderScreen title="精算" onBack={goHome} />;
+      return <SettlementScreen />;
     case "History":
       return <PlaceholderScreen title="対局の記録" onBack={goHome} />;
     case "HistoryDetail":
-      return (
-        <PlaceholderScreen
-          title="記録の詳細"
-          onBack={() => navigate({ name: "History" })}
-        />
-      );
+      return <HistoryDetailScreen gameId={screen.gameId} />;
     case "Stats":
       return <PlaceholderScreen title="通算成績" onBack={goHome} />;
     case "Roster":
