@@ -86,7 +86,7 @@ export function GameScreen(): ReactNode {
       setExpandedId(null);
       if (options?.blindToast && next.state.blinds.bigBlind !== prevBigBlind) {
         notify(
-          `ブラインドが上がりました<br />SB ${next.state.blinds.smallBlind} / BB ${next.state.blinds.bigBlind}`,
+          `ブラインドが上がりました\nSB ${next.state.blinds.smallBlind} / BB ${next.state.blinds.bigBlind}`,
         );
       }
     } catch (error) {
